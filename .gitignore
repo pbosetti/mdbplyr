@@ -18,7 +18,6 @@
 *.Rout.save
 
 # Vignette build outputs
-/inst/doc/
 /Meta/
 /vignettes/*.html
 /vignettes/*.utf8.md
