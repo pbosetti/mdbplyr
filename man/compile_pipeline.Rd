@@ -15,3 +15,13 @@ A list of MongoDB aggregation stages.
 \description{
 Compile a lazy Mongo query into an aggregation pipeline
 }
+\examples{
+tbl <- tbl_mongo(
+  list(name = "orders"),
+  schema = c("status", "amount"),
+  executor = function(pipeline, ...) tibble::tibble()
+)
+
+query <- dplyr::filter(tbl, amount > 0)
+compile_pipeline(query)
+}

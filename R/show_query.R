@@ -4,6 +4,15 @@
 #' @param ... Unused.
 #'
 #' @return The pipeline JSON string, invisibly.
+#' @examples
+#' tbl <- tbl_mongo(
+#'   list(name = "orders"),
+#'   schema = c("status", "amount"),
+#'   executor = function(pipeline, ...) tibble::tibble()
+#' )
+#'
+#' query <- dplyr::select(tbl, amount)
+#' show_query(query)
 #' @export
 show_query <- function(x, ...) {
   UseMethod("show_query")

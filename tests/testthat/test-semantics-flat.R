@@ -25,3 +25,17 @@ test_that("select and transmute update the visible schema", {
   expect_equal(names(compile_pipeline(selected)[[1]]$`$project`)[1:2], c("y", "new_x"))
   expect_equal(schema_fields(transmuted), "total")
 })
+
+test_that("append_stage participates in lazy execution", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:4, y = c(10, 40, 20, 30)))
+
+  query <- tbl |>
+    dplyr::arrange(dplyr::desc(y)) |>
+    append_stage("{\"$limit\": 2}")
+
+  expect_equal(nrow(tbl$src$collection$data), 4)
+
+  result <- collect(query)
+
+  expect_equal(result$y, c(40, 30))
+})

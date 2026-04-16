@@ -117,15 +117,20 @@ translate_expr <- function(expr, context = "scalar") {
 }
 
 #' @keywords internal
+compile_mongo_args <- function(args) {
+  unname(lapply(args, compile_mongo_expr))
+}
+
+#' @keywords internal
 compile_mongo_expr <- function(expr) {
   switch(
     expr$type,
     field = field_reference(expr$name),
     literal = expr$value,
-    comparison = stats::setNames(list(lapply(expr$args, compile_mongo_expr)), paste0("$", expr$fn)),
-    boolean = stats::setNames(list(lapply(expr$args, compile_mongo_expr)), paste0("$", expr$fn)),
+    comparison = stats::setNames(list(compile_mongo_args(expr$args)), paste0("$", expr$fn)),
+    boolean = stats::setNames(list(compile_mongo_args(expr$args)), paste0("$", expr$fn)),
     not = list(`$not` = list(compile_mongo_expr(expr$arg))),
-    call = stats::setNames(list(lapply(expr$args, compile_mongo_expr)), paste0("$", expr$fn)),
+    call = stats::setNames(list(compile_mongo_args(expr$args)), paste0("$", expr$fn)),
     round = list(`$round` = list(compile_mongo_expr(expr$arg), expr$digits)),
     if_else = list(`$cond` = list(
       `if` = compile_mongo_expr(expr$condition),

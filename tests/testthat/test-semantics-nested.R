@@ -20,3 +20,14 @@ test_that("show_query renders stable JSON", {
   expect_match(rendered, "\\$addFields")
   expect_match(rendered, "\\$project")
 })
+
+test_that("show_query renders comparison predicates with array syntax", {
+  tbl <- mock_tbl(tibble::tibble(`message.measurements.Fx` = c(-1, 2), score = c(1, 2))) |>
+    dplyr::filter(`message.measurements.Fx` > 0) |>
+    dplyr::select(`message.measurements.Fx`, score)
+
+  rendered <- show_query(tbl)
+
+  expect_match(rendered, "\\$gt\"\\s*:\\s*\\[")
+  expect_no_match(rendered, "\"1\"\\s*:")
+})

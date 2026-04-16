@@ -13,3 +13,14 @@ test_that("case_when translation yields stable structure", {
   expect_length(expr$cases, 1)
   expect_equal(expr$default$type, "literal")
 })
+
+test_that("compiled comparison operators serialize as Mongo arrays", {
+  expr <- MongoTidy:::translate_expr(rlang::expr(`message.measurements.Fx` > 0), context = "predicate")
+
+  compiled <- MongoTidy:::compile_mongo_expr(expr)
+  rendered <- jsonlite::toJSON(compiled, auto_unbox = TRUE, pretty = TRUE, null = "null")
+
+  expect_null(names(compiled$`$gt`))
+  expect_match(rendered, "\\$gt\": \\[")
+  expect_no_match(rendered, "\"1\":")
+})

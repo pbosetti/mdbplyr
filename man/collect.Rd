@@ -17,3 +17,15 @@ A tibble.
 \description{
 Collect a lazy Mongo query
 }
+\examples{
+tbl <- tbl_mongo(
+  list(name = "orders"),
+  schema = c("status", "amount"),
+  executor = function(pipeline, ...) {
+    tibble::tibble(status = "paid", amount = 10)
+  }
+)
+
+query <- dplyr::filter(tbl, amount > 0)
+collect(query)
+}

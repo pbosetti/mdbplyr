@@ -2,9 +2,12 @@
 % Please edit documentation in R/verbs-arrange.R
 \name{slice_head.tbl_mongo}
 \alias{slice_head.tbl_mongo}
+\alias{head.tbl_mongo}
 \title{Limit a lazy Mongo query}
 \usage{
-\method{slice_head}{tbl_mongo}(.data, ..., n = NULL, prop = NULL, by = NULL)
+slice_head.tbl_mongo(.data, ..., n = NULL, prop = NULL, by = NULL)
+
+\method{head}{tbl_mongo}(x, n = 6L, ...)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}
@@ -22,4 +25,14 @@ A modified \code{tbl_mongo} object.
 }
 \description{
 Limit a lazy Mongo query
+}
+\examples{
+tbl <- tbl_mongo(
+  list(name = "orders"),
+  schema = c("amount"),
+  executor = function(pipeline, ...) tibble::tibble()
+)
+
+dplyr::slice_head(tbl, n = 2)
+head(tbl, 2)
 }

@@ -4,7 +4,12 @@
 \alias{group_by.tbl_mongo}
 \title{Group a lazy Mongo query}
 \usage{
-\method{group_by}{tbl_mongo}(.data, ..., .add = FALSE, .drop = dplyr::group_by_drop_default(.data))
+group_by.tbl_mongo(
+  .data,
+  ...,
+  .add = FALSE,
+  .drop = dplyr::group_by_drop_default(.data)
+)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}
@@ -20,4 +25,13 @@ A modified \code{tbl_mongo} object.
 }
 \description{
 Group a lazy Mongo query
+}
+\examples{
+tbl <- tbl_mongo(
+  list(name = "orders"),
+  schema = c("status", "amount"),
+  executor = function(pipeline, ...) tibble::tibble()
+)
+
+dplyr::group_by(tbl, status)
 }

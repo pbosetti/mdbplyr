@@ -15,3 +15,13 @@ A character vector of known field names.
 \description{
 Inspect known fields for a lazy Mongo query
 }
+\examples{
+src <- mongo_src(
+  list(name = "orders", aggregate = function(...) tibble::tibble()),
+  schema = c("status", "amount")
+)
+tbl <- tbl_mongo(src)
+
+schema_fields(src)
+schema_fields(tbl)
+}

@@ -4,6 +4,17 @@
 #' @param ... Additional arguments forwarded to the executor.
 #'
 #' @return A tibble.
+#' @examples
+#' tbl <- tbl_mongo(
+#'   list(name = "orders"),
+#'   schema = c("status", "amount"),
+#'   executor = function(pipeline, ...) {
+#'     tibble::tibble(status = "paid", amount = 10)
+#'   }
+#' )
+#'
+#' query <- dplyr::filter(tbl, amount > 0)
+#' collect(query)
 #' @export
 collect <- function(x, ...) {
   UseMethod("collect")

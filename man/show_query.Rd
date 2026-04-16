@@ -17,3 +17,13 @@ The pipeline JSON string, invisibly.
 \description{
 Show the MongoDB aggregation pipeline for a lazy query
 }
+\examples{
+tbl <- tbl_mongo(
+  list(name = "orders"),
+  schema = c("status", "amount"),
+  executor = function(pipeline, ...) tibble::tibble()
+)
+
+query <- dplyr::select(tbl, amount)
+show_query(query)
+}

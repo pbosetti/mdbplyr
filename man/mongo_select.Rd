@@ -4,7 +4,7 @@
 \alias{select.tbl_mongo}
 \title{Select fields from a lazy Mongo query}
 \usage{
-\method{select}{tbl_mongo}(.data, ...)
+select.tbl_mongo(.data, ...)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}
@@ -16,4 +16,13 @@ A modified \code{tbl_mongo} object.
 }
 \description{
 Select fields from a lazy Mongo query
+}
+\examples{
+tbl <- tbl_mongo(
+  list(name = "orders"),
+  schema = c("status", "amount"),
+  executor = function(pipeline, ...) tibble::tibble()
+)
+
+dplyr::select(tbl, amount)
 }

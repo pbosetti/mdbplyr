@@ -22,6 +22,7 @@ The package is intentionally conservative:
 - `collect()`
 - `show_query()`
 - `schema_fields()`
+- `append_stage()`
 
 ### Supported verbs
 
@@ -123,6 +124,7 @@ MongoDB documents are not rectangular SQL tables. Nested fields, arrays, missing
 | Scalar mutation | Supported | Conservative expression subset |
 | Grouped summaries | Supported | `n()`, `sum()`, `mean()`, `min()`, `max()` |
 | Dot-path fields | Supported with caveats | Use backticked names such as `` `user.age` `` |
+| Manual pipeline stage append | Supported with caveats | `append_stage()` appends raw JSON after generated stages and does not infer schema changes |
 | Joins/window functions | Not supported | Explicitly out of scope |
 | Client-side fallback | Not supported | Unsupported features error clearly |
 

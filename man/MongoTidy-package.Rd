@@ -9,7 +9,7 @@
 A native tidy lazy backend for MongoDB aggregation pipelines.
 }
 \author{
-\strong{Maintainer}: GitHub Copilot \email{copilot@example.com}
+\strong{Maintainer}: Paolo Bosetti \email{paolo.bosetti@unitn.it}
 
 }
 \keyword{internal}

@@ -4,7 +4,7 @@
 \alias{rename.tbl_mongo}
 \title{Rename fields in a lazy Mongo query}
 \usage{
-\method{rename}{tbl_mongo}(.data, ...)
+rename.tbl_mongo(.data, ...)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}
@@ -16,4 +16,13 @@ A modified \code{tbl_mongo} object.
 }
 \description{
 Rename fields in a lazy Mongo query
+}
+\examples{
+tbl <- tbl_mongo(
+  list(name = "orders"),
+  schema = c("status", "amount"),
+  executor = function(pipeline, ...) tibble::tibble()
+)
+
+dplyr::rename(tbl, total = amount)
 }

@@ -4,7 +4,7 @@
 \alias{mutate.tbl_mongo}
 \title{Add computed fields to a lazy Mongo query}
 \usage{
-\method{mutate}{tbl_mongo}(.data, ...)
+mutate.tbl_mongo(.data, ...)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}
@@ -16,4 +16,13 @@ A modified \code{tbl_mongo} object.
 }
 \description{
 Add computed fields to a lazy Mongo query
+}
+\examples{
+tbl <- tbl_mongo(
+  list(name = "orders"),
+  schema = c("amount"),
+  executor = function(pipeline, ...) tibble::tibble()
+)
+
+dplyr::mutate(tbl, doubled = amount * 2)
 }

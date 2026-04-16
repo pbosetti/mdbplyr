@@ -21,3 +21,14 @@ A \code{tbl_mongo} object.
 \description{
 Create a lazy MongoDB table
 }
+\examples{
+tbl <- tbl_mongo(
+  list(name = "orders"),
+  schema = c("status", "amount"),
+  executor = function(pipeline, ...) {
+    tibble::tibble(status = "paid", amount = 10)
+  }
+)
+
+tbl
+}

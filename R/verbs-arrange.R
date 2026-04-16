@@ -5,9 +5,16 @@
 #' @param .by_group Whether to prefix the ordering with grouping fields.
 #'
 #' @return A modified `tbl_mongo` object.
+#' @examples
+#' tbl <- tbl_mongo(
+#'   list(name = "orders"),
+#'   schema = c("amount"),
+#'   executor = function(pipeline, ...) tibble::tibble()
+#' )
+#'
+#' dplyr::arrange(tbl, dplyr::desc(amount))
 #' @rdname mongo_arrange
 #' @export
-#' @exportS3Method dplyr::arrange
 arrange.tbl_mongo <- function(.data, ..., .by_group = FALSE) {
   quos <- rlang::enquos(...)
   order <- list()
@@ -43,9 +50,17 @@ arrange.tbl_mongo <- function(.data, ..., .by_group = FALSE) {
 #' @param by Unsupported.
 #'
 #' @return A modified `tbl_mongo` object.
+#' @examples
+#' tbl <- tbl_mongo(
+#'   list(name = "orders"),
+#'   schema = c("amount"),
+#'   executor = function(pipeline, ...) tibble::tibble()
+#' )
+#'
+#' dplyr::slice_head(tbl, n = 2)
+#' head(tbl, 2)
 #' @rdname mongo_slice_head
 #' @export
-#' @exportS3Method dplyr::slice_head
 slice_head.tbl_mongo <- function(.data, ..., n = NULL, prop = NULL, by = NULL) {
   if (!is.null(prop) || !is.null(by) || dots_n(...) > 0) {
     abort_unsupported("slice_head()", NULL, "Only slice_head(n = ...) is supported.")
@@ -60,6 +75,7 @@ dots_n <- function(...) {
 }
 
 #' @importFrom utils head
+#' @rdname mongo_slice_head
 #' @export
 head.tbl_mongo <- function(x, n = 6L, ...) {
   update_ir(x, limit = as.integer(n))

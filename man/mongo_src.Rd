@@ -21,3 +21,14 @@ A \code{mongo_src} object.
 \description{
 Construct a MongoDB source wrapper
 }
+\examples{
+collection <- list(
+  name = "orders",
+  aggregate = function(pipeline_json, ...) {
+    tibble::tibble(status = "paid", amount = 10)
+  }
+)
+
+src <- mongo_src(collection, schema = c("status", "amount"))
+src
+}

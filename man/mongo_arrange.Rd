@@ -4,7 +4,7 @@
 \alias{arrange.tbl_mongo}
 \title{Arrange a lazy Mongo query}
 \usage{
-\method{arrange}{tbl_mongo}(.data, ..., .by_group = FALSE)
+arrange.tbl_mongo(.data, ..., .by_group = FALSE)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}
@@ -18,4 +18,13 @@ A modified \code{tbl_mongo} object.
 }
 \description{
 Arrange a lazy Mongo query
+}
+\examples{
+tbl <- tbl_mongo(
+  list(name = "orders"),
+  schema = c("amount"),
+  executor = function(pipeline, ...) tibble::tibble()
+)
+
+dplyr::arrange(tbl, dplyr::desc(amount))
 }

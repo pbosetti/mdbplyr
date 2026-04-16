@@ -4,7 +4,7 @@
 \alias{transmute.tbl_mongo}
 \title{Compute and keep only derived fields}
 \usage{
-\method{transmute}{tbl_mongo}(.data, ...)
+transmute.tbl_mongo(.data, ...)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}
@@ -16,4 +16,13 @@ A modified \code{tbl_mongo} object.
 }
 \description{
 Compute and keep only derived fields
+}
+\examples{
+tbl <- tbl_mongo(
+  list(name = "orders"),
+  schema = c("amount"),
+  executor = function(pipeline, ...) tibble::tibble()
+)
+
+dplyr::transmute(tbl, doubled = amount * 2)
 }

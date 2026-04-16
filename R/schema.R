@@ -3,6 +3,15 @@
 #' @param x A `tbl_mongo` or `mongo_src` object.
 #'
 #' @return A character vector of known field names.
+#' @examples
+#' src <- mongo_src(
+#'   list(name = "orders", aggregate = function(...) tibble::tibble()),
+#'   schema = c("status", "amount")
+#' )
+#' tbl <- tbl_mongo(src)
+#'
+#' schema_fields(src)
+#' schema_fields(tbl)
 #' @export
 schema_fields <- function(x) {
   UseMethod("schema_fields")

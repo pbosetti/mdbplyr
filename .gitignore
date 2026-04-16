@@ -1,0 +1,36 @@
+# R session files
+.Rhistory
+.RData
+.Ruserdata
+.Rapp.history
+.Renviron
+
+# IDE files
+.Rproj.user/
+*.Rproj
+
+# Package build artifacts
+/*.tar.gz
+/*.Rcheck/
+/..Rcheck/
+*.Rout
+*.Rout.fail
+*.Rout.save
+
+# Vignette build outputs
+/inst/doc/
+/Meta/
+/vignettes/*.html
+/vignettes/*.utf8.md
+/vignettes/*.knit.md
+
+# Native compilation byproducts
+/src/*.o
+/src/*.so
+/src/*.dll
+/src/*.dylib
+/src/*.a
+/src/*.lib
+
+# OS files
+.DS_Store

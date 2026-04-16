@@ -4,7 +4,7 @@
 \alias{summarise.tbl_mongo}
 \title{Summarise a lazy Mongo query}
 \usage{
-\method{summarise}{tbl_mongo}(.data, ..., .by = NULL, .groups = NULL)
+summarise.tbl_mongo(.data, ..., .by = NULL, .groups = NULL)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}
@@ -20,4 +20,17 @@ A modified \code{tbl_mongo} object.
 }
 \description{
 Summarise a lazy Mongo query
+}
+\examples{
+tbl <- tbl_mongo(
+  list(name = "orders"),
+  schema = c("status", "amount"),
+  executor = function(pipeline, ...) tibble::tibble()
+)
+
+query <- tbl |>
+  dplyr::group_by(status) |>
+  dplyr::summarise(total = sum(amount))
+
+show_query(query)
 }

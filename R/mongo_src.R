@@ -6,6 +6,16 @@
 #' @param executor Optional function used to execute compiled pipelines.
 #'
 #' @return A `mongo_src` object.
+#' @examples
+#' collection <- list(
+#'   name = "orders",
+#'   aggregate = function(pipeline_json, ...) {
+#'     tibble::tibble(status = "paid", amount = 10)
+#'   }
+#' )
+#'
+#' src <- mongo_src(collection, schema = c("status", "amount"))
+#' src
 #' @export
 mongo_src <- function(collection, name = NULL, schema = NULL, executor = NULL) {
   if (is.null(executor)) {

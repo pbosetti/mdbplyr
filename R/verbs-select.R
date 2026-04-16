@@ -20,9 +20,16 @@ parse_projection <- function(quos, context = "select()") {
 #' @param ... Bare field names or `new_name = old_name` renames.
 #'
 #' @return A modified `tbl_mongo` object.
+#' @examples
+#' tbl <- tbl_mongo(
+#'   list(name = "orders"),
+#'   schema = c("status", "amount"),
+#'   executor = function(pipeline, ...) tibble::tibble()
+#' )
+#'
+#' dplyr::select(tbl, amount)
 #' @rdname mongo_select
 #' @export
-#' @exportS3Method dplyr::select
 select.tbl_mongo <- function(.data, ...) {
   quos <- rlang::enquos(...)
   projection <- parse_projection(quos, context = "select()")
@@ -35,9 +42,16 @@ select.tbl_mongo <- function(.data, ...) {
 #' @param ... Named bare field renames.
 #'
 #' @return A modified `tbl_mongo` object.
+#' @examples
+#' tbl <- tbl_mongo(
+#'   list(name = "orders"),
+#'   schema = c("status", "amount"),
+#'   executor = function(pipeline, ...) tibble::tibble()
+#' )
+#'
+#' dplyr::rename(tbl, total = amount)
 #' @rdname mongo_rename
 #' @export
-#' @exportS3Method dplyr::rename
 rename.tbl_mongo <- function(.data, ...) {
   quos <- rlang::enquos(...)
   rename_specs <- parse_projection(quos, context = "rename()")

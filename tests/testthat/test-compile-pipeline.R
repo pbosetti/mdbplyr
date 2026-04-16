@@ -14,3 +14,15 @@ test_that("compile_pipeline orders stages conservatively", {
   expect_equal(stage_names, c("$match", "$addFields", "$project", "$group", "$project", "$sort", "$limit"))
   expect_equal(pipeline[[4]]$`$group`$total, list(`$sum` = "$y"))
 })
+
+test_that("append_stage appends manual stages after generated pipeline", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:3, y = 4:6)) |>
+    dplyr::filter(x > 1) |>
+    append_stage("{\"$limit\": 1}")
+
+  pipeline <- compile_pipeline(tbl)
+  stage_names <- vapply(pipeline, names, character(1))
+
+  expect_equal(stage_names, c("$match", "$limit"))
+  expect_equal(pipeline[[2]], list(`$limit` = 1))
+})

@@ -6,6 +6,16 @@
 #' @param executor Optional executor function for compiled pipelines.
 #'
 #' @return A `tbl_mongo` object.
+#' @examples
+#' tbl <- tbl_mongo(
+#'   list(name = "orders"),
+#'   schema = c("status", "amount"),
+#'   executor = function(pipeline, ...) {
+#'     tibble::tibble(status = "paid", amount = 10)
+#'   }
+#' )
+#'
+#' tbl
 #' @export
 tbl_mongo <- function(collection, name = NULL, schema = NULL, executor = NULL) {
   src <- if (inherits(collection, "mongo_src")) {
@@ -22,7 +32,8 @@ tbl_mongo <- function(collection, name = NULL, schema = NULL, executor = NULL) {
     groups = character(),
     summaries = list(),
     order = list(),
-    limit = NULL
+    limit = NULL,
+    manual_stages = list()
   )
 
   structure(
@@ -61,6 +72,8 @@ print.tbl_mongo <- function(x, ...) {
   cat("  Summaries:", if (length(x$ir$summaries)) paste(names(x$ir$summaries), collapse = ", ") else "<none>", "
 ")
   cat("  Limit:", x$ir$limit %||% "<none>", "
+")
+  cat("  Manual stages:", length(x$ir$manual_stages), "
 ")
   invisible(x)
 }

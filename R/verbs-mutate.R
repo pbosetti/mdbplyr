@@ -15,9 +15,16 @@ append_projection_fields <- function(projection, fields) {
 #' @param ... Named scalar expressions.
 #'
 #' @return A modified `tbl_mongo` object.
+#' @examples
+#' tbl <- tbl_mongo(
+#'   list(name = "orders"),
+#'   schema = c("amount"),
+#'   executor = function(pipeline, ...) tibble::tibble()
+#' )
+#'
+#' dplyr::mutate(tbl, doubled = amount * 2)
 #' @rdname mongo_mutate
 #' @export
-#' @exportS3Method dplyr::mutate
 mutate.tbl_mongo <- function(.data, ...) {
   quos <- rlang::enquos(...)
   if (!length(quos)) {
@@ -41,9 +48,16 @@ mutate.tbl_mongo <- function(.data, ...) {
 #' @param ... Named scalar expressions.
 #'
 #' @return A modified `tbl_mongo` object.
+#' @examples
+#' tbl <- tbl_mongo(
+#'   list(name = "orders"),
+#'   schema = c("amount"),
+#'   executor = function(pipeline, ...) tibble::tibble()
+#' )
+#'
+#' dplyr::transmute(tbl, doubled = amount * 2)
 #' @rdname mongo_transmute
 #' @export
-#' @exportS3Method dplyr::transmute
 transmute.tbl_mongo <- function(.data, ...) {
   quos <- rlang::enquos(...)
   if (!length(quos)) {

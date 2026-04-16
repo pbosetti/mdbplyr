@@ -3,6 +3,15 @@
 #' @param x A `tbl_mongo` object.
 #'
 #' @return A list of MongoDB aggregation stages.
+#' @examples
+#' tbl <- tbl_mongo(
+#'   list(name = "orders"),
+#'   schema = c("status", "amount"),
+#'   executor = function(pipeline, ...) tibble::tibble()
+#' )
+#'
+#' query <- dplyr::filter(tbl, amount > 0)
+#' compile_pipeline(query)
 #' @export
 compile_pipeline <- function(x) {
   if (!inherits(x, "tbl_mongo")) {
@@ -40,6 +49,10 @@ compile_pipeline <- function(x) {
 
   if (!is.null(ir$limit)) {
     stages[[length(stages) + 1]] <- list(`$limit` = as.integer(ir$limit))
+  }
+
+  if (length(ir$manual_stages) > 0) {
+    stages <- c(stages, ir$manual_stages)
   }
 
   stages
