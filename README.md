@@ -13,6 +13,15 @@ The package is intentionally conservative:
 - it fails explicitly for unsupported semantics,
 - it avoids silent client-side fallback.
 
+## Install
+
+The package is still in its initial development phase. While it is under testing and not available on CRAN, you can install it with:
+
+```R
+install.package("pak")
+pak::pak("pbosetti/MongoTidy")
+```
+
 ## Current implemented subset
 
 ### Core objects and terminals
