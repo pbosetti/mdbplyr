@@ -1,10 +1,12 @@
-# mongo-tidy
+# mdbplyr
+
+![](mdbplyr.png)
 
 A native tidy lazy backend for MongoDB in R.
 
 ## Overview
 
-`mongo-tidy` provides a disciplined `dplyr`-style interface for read-only analytical MongoDB queries. Queries stay lazy, compile into MongoDB aggregation pipelines, and only execute at `collect()`.
+`mdbplyr` provides a disciplined `dplyr`-style interface for read-only analytical MongoDB queries. Queries stay lazy, compile into MongoDB aggregation pipelines, and only execute at `collect()`.
 
 The package is intentionally conservative:
 
@@ -19,7 +21,7 @@ The package is still in its initial development phase. While it is under testing
 
 ```R
 install.package("pak")
-pak::pak("pbosetti/MongoTidy")
+pak::pak("pbosetti/mdbplyr")
 ```
 
 ## Current implemented subset
@@ -70,7 +72,7 @@ pak::pak("pbosetti/MongoTidy")
 ## Example
 
 ```r
-library(MongoTidy)
+library(mdbplyr)
 library(dplyr)
 
 orders <- tbl_mongo(

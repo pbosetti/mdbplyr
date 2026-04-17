@@ -1,5 +1,5 @@
-Package: MongoTidy
-Title: Native Lazy Analytical Backend for MongoDB
+Package: mdbplyr
+Title: Dplyr-inspired, Native Lazy Analytical Backend for MongoDB
 Version: 0.0.1
 Authors@R: person(given = "Paolo", family = "Bosetti", role = c("aut", "cre"), email = "paolo.bosetti@unitn.it")
 Description: Provides a disciplined, lazy subset of dplyr semantics for
@@ -8,7 +8,7 @@ Description: Provides a disciplined, lazy subset of dplyr semantics for
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Depends: 
     R (>= 4.2.0)
 Imports:

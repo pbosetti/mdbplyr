@@ -1,5 +1,5 @@
 test_that("expression translation covers scalar operators", {
-  expr <- MongoTidy:::translate_expr(rlang::expr(round(abs(x) / 2, 1)))
+  expr <- mdbplyr:::translate_expr(rlang::expr(round(abs(x) / 2, 1)))
 
   expect_equal(expr$type, "round")
   expect_equal(expr$digits, 1L)
@@ -7,7 +7,7 @@ test_that("expression translation covers scalar operators", {
 })
 
 test_that("case_when translation yields stable structure", {
-  expr <- MongoTidy:::translate_expr(rlang::expr(case_when(x > 1 ~ "big", TRUE ~ "small")))
+  expr <- mdbplyr:::translate_expr(rlang::expr(case_when(x > 1 ~ "big", TRUE ~ "small")))
 
   expect_equal(expr$type, "case_when")
   expect_length(expr$cases, 1)
@@ -15,9 +15,9 @@ test_that("case_when translation yields stable structure", {
 })
 
 test_that("compiled comparison operators serialize as Mongo arrays", {
-  expr <- MongoTidy:::translate_expr(rlang::expr(`message.measurements.Fx` > 0), context = "predicate")
+  expr <- mdbplyr:::translate_expr(rlang::expr(`message.measurements.Fx` > 0), context = "predicate")
 
-  compiled <- MongoTidy:::compile_mongo_expr(expr)
+  compiled <- mdbplyr:::compile_mongo_expr(expr)
   rendered <- jsonlite::toJSON(compiled, auto_unbox = TRUE, pretty = TRUE, null = "null")
 
   expect_null(names(compiled$`$gt`))

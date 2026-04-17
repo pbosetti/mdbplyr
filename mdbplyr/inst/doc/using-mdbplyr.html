@@ -12,7 +12,7 @@
 
 
 
-<title>Using MongoTidy</title>
+<title>Using mdbplyr</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -337,16 +337,16 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<h1 class="title toc-ignore">Using MongoTidy</h1>
+<h1 class="title toc-ignore">Using mdbplyr</h1>
 
 
 
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>This repository contains <code>MongoTidy</code>, an R package that
+<p>This repository contains <code>mdbplyr</code>, an R package that
 provides a disciplined, lazy <code>dplyr</code>-style interface for
 MongoDB aggregation pipelines.</p>
-<p><code>MongoTidy</code> sits between raw <code>mongolite</code> usage
+<p><code>mdbplyr</code> sits between raw <code>mongolite</code> usage
 and broader compatibility layers. Compared with writing aggregation JSON
 by hand, it lets you express supported queries with tidy verbs and
 inspect the generated pipeline before execution. Compared with
@@ -373,11 +373,11 @@ with default port and no authentication. The code below loads
 <code>starwars</code>.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(mongolite)</span>
-<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="fu">library</span>(MongoTidy)</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="fu">library</span>(mdbplyr)</span>
 <span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a></span>
 <span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a>starwars_collection <span class="ot">&lt;-</span> mongolite<span class="sc">::</span><span class="fu">mongo</span>(</span>
 <span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>  <span class="at">collection =</span> <span class="st">&quot;starwars&quot;</span>,</span>
-<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>  <span class="at">db =</span> <span class="st">&quot;mongotidy&quot;</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>  <span class="at">db =</span> <span class="st">&quot;mdbplyr&quot;</span></span>
 <span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>)</span>
 <span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a></span>
 <span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a>starwars_collection<span class="sc">$</span><span class="fu">drop</span>()</span>
@@ -390,11 +390,11 @@ with default port and no authentication. The code below loads
 <p>Once the collection is loaded, <code>starwars_tbl</code> is the lazy
 table used in the examples below.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">library</span>(MongoTidy)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">library</span>(mdbplyr)</span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a></span>
 <span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>starwars_collection <span class="ot">&lt;-</span> mongolite<span class="sc">::</span><span class="fu">mongo</span>(</span>
 <span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>  <span class="at">collection =</span> <span class="st">&quot;starwars&quot;</span>,</span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>  <span class="at">db =</span> <span class="st">&quot;mongotidy&quot;</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>  <span class="at">db =</span> <span class="st">&quot;mdbplyr&quot;</span></span>
 <span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>)</span>
 <span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a></span>
 <span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>starwars_tbl <span class="ot">&lt;-</span> <span class="fu">tbl_mongo</span>(</span>
@@ -498,7 +498,7 @@ collection.</p>
 <li>conservative grouped summaries,</li>
 <li>no joins, window functions, or automatic client-side fallback.</li>
 </ul>
-<p>If a query falls outside that subset, <code>MongoTidy</code> is
+<p>If a query falls outside that subset, <code>mdbplyr</code> is
 designed to fail explicitly rather than guess or silently change
 execution semantics.</p>
 </div>

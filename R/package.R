@@ -1,4 +1,4 @@
-#' MongoTidy package
+#' mdbplyr package
 #'
 #' A native tidy lazy backend for MongoDB aggregation pipelines.
 #'

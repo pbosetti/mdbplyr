@@ -1,8 +1,8 @@
 ---
-title: "Using MongoTidy"
+title: "Using mdbplyr"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Using MongoTidy}
+  %\VignetteIndexEntry{Using mdbplyr}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -16,10 +16,10 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-This repository contains `MongoTidy`, an R package that provides a disciplined,
+This repository contains `mdbplyr`, an R package that provides a disciplined,
 lazy `dplyr`-style interface for MongoDB aggregation pipelines.
 
-`MongoTidy` sits between raw `mongolite` usage and broader compatibility layers.
+`mdbplyr` sits between raw `mongolite` usage and broader compatibility layers.
 Compared with writing aggregation JSON by hand, it lets you express supported
 queries with tidy verbs and inspect the generated pipeline before execution.
 Compared with approaches that try to hide MongoDB behind table-like semantics,
@@ -45,11 +45,11 @@ named `starwars`.
 ```{r load-starwars, eval = FALSE}
 library(dplyr)
 library(mongolite)
-library(MongoTidy)
+library(mdbplyr)
 
 starwars_collection <- mongolite::mongo(
   collection = "starwars",
-  db = "mongotidy"
+  db = "mdbplyr"
 )
 
 starwars_collection$drop()
@@ -66,11 +66,11 @@ examples below.
 
 ```{r create-lazy-table, eval = FALSE}
 library(dplyr)
-library(MongoTidy)
+library(mdbplyr)
 
 starwars_collection <- mongolite::mongo(
   collection = "starwars",
-  db = "mongotidy"
+  db = "mdbplyr"
 )
 
 starwars_tbl <- tbl_mongo(
@@ -195,5 +195,5 @@ The examples above stay within the currently supported subset:
 - conservative grouped summaries,
 - no joins, window functions, or automatic client-side fallback.
 
-If a query falls outside that subset, `MongoTidy` is designed to fail
+If a query falls outside that subset, `mdbplyr` is designed to fail
 explicitly rather than guess or silently change execution semantics.

@@ -1,4 +1,4 @@
 library(testthat)
-library(MongoTidy)
+library(mdbplyr)
 
-test_check("MongoTidy")
+test_check("mdbplyr")
