@@ -39,6 +39,17 @@ test_that("mutate supports overwriting an existing column with exponentiation", 
   )
 })
 
+test_that("mutate supports parenthesized expressions", {
+  tbl <- mock_tbl(tibble::tibble(x = c(1, 2, 4), y = c(4, 8, 16)))
+
+  mutated <- dplyr::mutate(tbl, x = y / (x ^ 2))
+
+  expect_equal(
+    collect(mutated),
+    tibble::tibble(x = c(4, 2, 1), y = c(4, 8, 16))
+  )
+})
+
 test_that("cursor requires cursor-capable sources", {
   tbl <- tbl_mongo(
     list(name = "orders"),

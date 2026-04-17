@@ -122,6 +122,10 @@ translate_expr <- function(expr, context = "scalar") {
   fn <- rlang::call_name(expr)
   args <- rlang::call_args(expr)
 
+  if (identical(fn, "(")) {
+    return(translate_expr(args[[1]], context = context))
+  }
+
   comparison_map <- c(`==` = "eq", `!=` = "ne", `>` = "gt", `>=` = "gte", `<` = "lt", `<=` = "lte")
   boolean_map <- c(`&` = "and", `|` = "or")
   arithmetic_map <- c(`+` = "add", `-` = "subtract", `*` = "multiply", `/` = "divide", `%%` = "mod", `^` = "pow")
