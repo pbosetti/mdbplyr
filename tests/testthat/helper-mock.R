@@ -25,6 +25,47 @@ mock_tbl <- function(data, name = "mock_collection") {
   tbl_mongo(collection, schema = names(data), executor = function(pipeline, ...) run_pipeline(data, pipeline))
 }
 
+#' Create a mock multi-collection "database" for join tests.
+#'
+#' Returns a named list of `tbl_mongo` objects whose executors share a common
+#' in-memory table context so that `$lookup` stages work correctly.
+#'
+#' @param ... Named data frames, one per collection.
+#' @return Named list of `tbl_mongo` objects.
+#' @keywords internal
+mock_db <- function(...) {
+  table_data <- lapply(list(...), tibble::as_tibble)
+
+  make_tbl <- function(name, data, all_tables) {
+    force(name)
+    force(data)
+    force(all_tables)
+    executor <- function(pipeline, ...) {
+      run_pipeline(data, pipeline, all_tables)
+    }
+    collection <- structure(
+      list(
+        name = name,
+        data = data,
+        aggregate = (function(d, db) {
+          function(pipeline_json, iterate = FALSE, ...) {
+            pipeline <- jsonlite::fromJSON(pipeline_json, simplifyVector = FALSE)
+            run_pipeline(d, pipeline, db)
+          }
+        })(data, all_tables)
+      ),
+      class = "mock_mongo"
+    )
+    tbl_mongo(collection, schema = names(data), executor = executor)
+  }
+
+  result <- lapply(names(table_data), function(n) {
+    make_tbl(n, table_data[[n]], table_data)
+  })
+  stats::setNames(result, names(table_data))
+}
+
+
 mock_cursor <- function(data) {
   rows <- tibble::as_tibble(data)
   self <- local({
@@ -83,7 +124,7 @@ mock_cursor <- function(data) {
   structure(self, class = c("mongo_iter", "jeroen", class(self)))
 }
 
-run_pipeline <- function(data, pipeline) {
+run_pipeline <- function(data, pipeline, db = NULL) {
   result <- tibble::as_tibble(data)
   for (stage in pipeline) {
     op <- names(stage)[[1]]
@@ -96,6 +137,9 @@ run_pipeline <- function(data, pipeline) {
       `$group` = apply_group(result, spec),
       `$sort` = apply_sort(result, spec),
       `$limit` = tibble::as_tibble(utils::head(result, spec)),
+      `$lookup` = apply_lookup(result, spec, db),
+      `$unwind` = apply_unwind(result, spec),
+      `$replaceRoot` = apply_replace_root(result, spec),
       stop("Unsupported stage in test executor: ", op, call. = FALSE)
     )
   }
@@ -103,8 +147,37 @@ run_pipeline <- function(data, pipeline) {
 }
 
 apply_match <- function(data, spec) {
-  mask <- eval_expr(spec$`$expr`, data)
-  tibble::as_tibble(data[isTRUE(mask) | mask %in% TRUE, , drop = FALSE])
+  # The existing code used $expr only; handle both $expr and plain query operators.
+  if (!is.null(spec$`$expr`)) {
+    mask <- eval_expr(spec$`$expr`, data)
+    return(tibble::as_tibble(data[isTRUE(mask) | mask %in% TRUE, , drop = FALSE]))
+  }
+
+  # Query-style: { field: { $op: value } }
+  mask <- rep(TRUE, nrow(data))
+  for (field in names(spec)) {
+    condition <- spec[[field]]
+    col <- data[[field]]
+    field_mask <- if (is.list(condition) && length(condition) == 1L) {
+      op  <- names(condition)[[1L]]
+      val <- condition[[1L]]
+      switch(
+        op,
+        `$ne` = vapply(col, function(v) !identical(v, val), logical(1L)),
+        `$eq` = vapply(col, function(v)  identical(v, val), logical(1L)),
+        `$size` = vapply(col, function(v) {
+          n <- if (is.null(v)) 0L else if (is.data.frame(v)) nrow(v) else length(v)
+          identical(n, as.integer(val))
+        }, logical(1L)),
+        stop("Unsupported query operator in test mock: ", op, call. = FALSE)
+      )
+    } else {
+      # Plain equality: { field: value }
+      vapply(col, function(v) identical(v, condition), logical(1L))
+    }
+    mask <- mask & field_mask
+  }
+  tibble::as_tibble(data[mask, , drop = FALSE])
 }
 
 apply_add_fields <- function(data, spec) {
@@ -116,6 +189,15 @@ apply_add_fields <- function(data, spec) {
 }
 
 apply_project <- function(data, spec) {
+  non_id <- spec[names(spec) != "_id"]
+
+  # Exclusion mode: all non-_id values are 0L → drop those fields.
+  if (length(non_id) > 0L && all(vapply(non_id, identical, logical(1L), 0L))) {
+    keep <- setdiff(names(data), names(non_id))
+    return(tibble::as_tibble(data[, keep, drop = FALSE]))
+  }
+
+  # Inclusion mode (original behaviour).
   out <- list()
   for (name in names(spec)) {
     expr <- spec[[name]]
@@ -334,4 +416,166 @@ eval_agg <- function(expr, data) {
     `$max` = max(values, na.rm = TRUE),
     stop("Unsupported aggregate in test executor: ", op, call. = FALSE)
   )
+}
+
+# ---- join stage helpers -----------------------------------------------------
+
+# Recursively replace $$var references with their resolved scalar values.
+substitute_let_vars <- function(expr, let_vars) {
+  if (is.character(expr) && length(expr) == 1L && startsWith(expr, "$$")) {
+    var_name <- substring(expr, 3L)
+    val <- let_vars[[var_name]]
+    if (!is.null(val)) return(val)
+  }
+  if (is.list(expr)) {
+    return(lapply(expr, substitute_let_vars, let_vars = let_vars))
+  }
+  expr
+}
+
+apply_lookup <- function(data, spec, db) {
+  if (is.null(db)) {
+    stop("$lookup requires a database context; use mock_db() instead of mock_tbl().", call. = FALSE)
+  }
+  from_data <- db[[spec$from]]
+  if (is.null(from_data)) {
+    stop("$lookup: unknown collection '", spec$from, "'", call. = FALSE)
+  }
+  from_data <- tibble::as_tibble(from_data)
+  joined_col <- spec$as
+  n <- nrow(data)
+  results <- vector("list", n)
+
+  for (i in seq_len(n)) {
+    row <- data[i, , drop = FALSE]
+
+    # Resolve each let variable to a scalar for this row.
+    let_vals <- lapply(spec$let, function(expr_str) {
+      v <- eval_expr(expr_str, row)
+      if (length(v) >= 1L) v[[1L]] else v
+    })
+
+    # Substitute $$var references so eval_expr never sees them.
+    row_pipeline <- substitute_let_vars(spec$pipeline, let_vals)
+
+    results[[i]] <- run_pipeline(from_data, row_pipeline, db)
+  }
+
+  data[[joined_col]] <- results
+  tibble::as_tibble(data)
+}
+
+apply_unwind <- function(data, spec) {
+  if (is.character(spec)) {
+    path    <- spec
+    preserve <- FALSE
+  } else {
+    path    <- spec$path
+    preserve <- isTRUE(spec$preserveNullAndEmptyArrays)
+  }
+  field_name <- if (startsWith(path, "$")) substring(path, 2L) else path
+
+  col <- data[[field_name]]
+  other_cols <- setdiff(names(data), field_name)
+
+  result_rows <- list()
+  for (i in seq_len(nrow(data))) {
+    arr <- col[[i]]
+    base <- as.list(data[i, other_cols, drop = FALSE])
+
+    is_empty <- is.null(arr) ||
+      (is.data.frame(arr) && nrow(arr) == 0L) ||
+      (is.list(arr) && !is.data.frame(arr) && length(arr) == 0L)
+
+    if (is_empty) {
+      if (preserve) {
+        base[[field_name]] <- list(NULL)
+        result_rows[[length(result_rows) + 1L]] <- tibble::as_tibble(base)
+      }
+      next
+    }
+
+    if (is.data.frame(arr)) {
+      for (j in seq_len(nrow(arr))) {
+        new_row <- base
+        new_row[[field_name]] <- list(as.list(arr[j, , drop = FALSE]))
+        result_rows[[length(result_rows) + 1L]] <- tibble::as_tibble(new_row)
+      }
+    } else if (is.list(arr)) {
+      for (item in arr) {
+        new_row <- base
+        new_row[[field_name]] <- list(item)
+        result_rows[[length(result_rows) + 1L]] <- tibble::as_tibble(new_row)
+      }
+    }
+  }
+
+  if (length(result_rows) == 0L) {
+    return(data[0L, , drop = FALSE])
+  }
+  dplyr::bind_rows(result_rows)
+}
+
+apply_replace_root <- function(data, spec) {
+  new_root_spec <- spec$newRoot
+  if (!is.list(new_root_spec) || !("$mergeObjects" %in% names(new_root_spec))) {
+    stop("$replaceRoot: only $mergeObjects is supported in the test mock.", call. = FALSE)
+  }
+
+  merge_args <- new_root_spec$`$mergeObjects`
+
+  result_rows <- lapply(seq_len(nrow(data)), function(i) {
+    row <- data[i, , drop = FALSE]
+    merged <- list()
+
+    for (arg in merge_args) {
+      contribution <- if (identical(arg, "$$ROOT")) {
+        # Expand the current row into a named list. List-columns whose
+        # single element is itself a list (embedded document) must stay
+        # wrapped so that tibble::as_tibble sees a length-1 list-column,
+        # not a length-N nested list.
+        out <- lapply(names(row), function(n) {
+          v <- row[[n]]
+          if (is.list(v) && length(v) == 1L) {
+            inner <- v[[1L]]
+            if (is.list(inner)) v else inner  # keep embedded docs wrapped
+          } else {
+            v
+          }
+        })
+        stats::setNames(out, names(row))
+      } else if (is.character(arg) && length(arg) == 1L && startsWith(arg, "$")) {
+        # Reference to a field: extract and spread its named-list value.
+        field_name <- substring(arg, 2L)
+        v <- if (field_name %in% names(row)) row[[field_name]] else NULL
+        # Unwrap list-column wrapper if present.
+        if (is.list(v) && length(v) == 1L) v <- v[[1L]]
+        if (is.list(v)) v else NULL
+      } else if (is.list(arg) && "$ifNull" %in% names(arg)) {
+        # $ifNull: [field_ref, default] – used for left joins.
+        ifnull_args <- arg$`$ifNull`
+        field_name  <- substring(ifnull_args[[1L]], 2L)  # strip "$"
+        v <- if (field_name %in% names(row)) row[[field_name]] else NULL
+        if (is.list(v) && length(v) == 1L) v <- v[[1L]]
+        if (is.null(v) || (is.list(v) && length(v) == 0L)) {
+          default <- ifnull_args[[2L]]
+          if (is.list(default)) default else list()
+        } else if (is.list(v)) {
+          v
+        } else {
+          NULL
+        }
+      } else {
+        NULL
+      }
+
+      if (!is.null(contribution) && is.list(contribution)) {
+        merged <- utils::modifyList(merged, contribution)
+      }
+    }
+
+    tibble::as_tibble(merged)
+  })
+
+  dplyr::bind_rows(result_rows)
 }
