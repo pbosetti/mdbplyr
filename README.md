@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/pbosetti/mdbplyr/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/pbosetti/mdbplyr/actions/workflows/ci.yaml)
 
-<img src="mdbplyr.png" width="200" />
+<img src="media/mdbplyr.png" width="200" />
 
 A native tidy lazy backend for MongoDB in R.
 

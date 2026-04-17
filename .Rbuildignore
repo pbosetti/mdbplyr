@@ -5,3 +5,7 @@
 ^\.Rproj\.user$
 ^CRAN-SUBMISSION$
 ^cran-comments\.md$
+^tools$
+^media$
+^mdbplyr$
+^.github$

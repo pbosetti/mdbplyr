@@ -3,6 +3,8 @@ It provides a subset of dplyr verbs that translate into MongoDB aggregation
 stages, allowing users to compose lazy queries against MongoDB collections using 
 tidy evaluation.
 
+Second submission: fixed notes in first one
+
 ## R CMD check results
 
 0 errors | 0 warnings | 1 note

@@ -1,5 +1,5 @@
 Package: mdbplyr
-Title: Dplyr-inspired, Native Lazy Analytical Backend for MongoDB
+Title: A Native Lazy Analytical Backend for MongoDB
 Version: 0.1.0
 Authors@R: person(given = "Paolo", family = "Bosetti", role = c("aut", "cre"), email = "paolo.bosetti@unitn.it")
 Description: Provides a disciplined, lazy subset of dplyr semantics for
