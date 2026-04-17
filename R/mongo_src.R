@@ -4,12 +4,21 @@
 #' @param name Optional human-readable collection name.
 #' @param schema Optional character vector describing the available fields.
 #' @param executor Optional function used to execute compiled pipelines.
+#' @param cursor_executor Optional function used to open a cursor over compiled
+#'   pipelines.
 #'
 #' @return A `mongo_src` object.
 #' @examples
 #' collection <- list(
 #'   name = "orders",
-#'   aggregate = function(pipeline_json, ...) {
+#'   aggregate = function(pipeline_json, iterate = FALSE, ...) {
+#'     if (iterate) {
+#'       data <- tibble::tibble(status = "paid", amount = 10)
+#'       return(local({
+#'         page <- function(size = 1000) data
+#'         structure(environment(), class = "mongo_iter")
+#'       }))
+#'     }
 #'     tibble::tibble(status = "paid", amount = 10)
 #'   }
 #' )
@@ -17,7 +26,7 @@
 #' src <- mongo_src(collection, schema = c("status", "amount"))
 #' src
 #' @export
-mongo_src <- function(collection, name = NULL, schema = NULL, executor = NULL) {
+mongo_src <- function(collection, name = NULL, schema = NULL, executor = NULL, cursor_executor = NULL) {
   if (is.null(executor)) {
     aggregate_method <- tryCatch(collection$aggregate, error = function(...) NULL)
     if (is.function(aggregate_method)) {
@@ -28,6 +37,20 @@ mongo_src <- function(collection, name = NULL, schema = NULL, executor = NULL) {
           null = "null",
           pretty = FALSE
         ), ...)
+      }
+    }
+  }
+
+  if (is.null(cursor_executor)) {
+    aggregate_method <- tryCatch(collection$aggregate, error = function(...) NULL)
+    if (is.function(aggregate_method)) {
+      cursor_executor <- function(pipeline, ...) {
+        aggregate_method(jsonlite::toJSON(
+          pipeline,
+          auto_unbox = TRUE,
+          null = "null",
+          pretty = FALSE
+        ), iterate = TRUE, ...)
       }
     }
   }
@@ -48,7 +71,8 @@ mongo_src <- function(collection, name = NULL, schema = NULL, executor = NULL) {
       collection = collection,
       name = name %||% tryCatch(collection$name, error = function(...) "collection"),
       schema = unique(schema %||% character()),
-      executor = executor
+      executor = executor,
+      cursor_executor = cursor_executor
     ),
     class = "mongo_src"
   )

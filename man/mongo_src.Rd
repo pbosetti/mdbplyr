@@ -4,7 +4,13 @@
 \alias{mongo_src}
 \title{Construct a MongoDB source wrapper}
 \usage{
-mongo_src(collection, name = NULL, schema = NULL, executor = NULL)
+mongo_src(
+  collection,
+  name = NULL,
+  schema = NULL,
+  executor = NULL,
+  cursor_executor = NULL
+)
 }
 \arguments{
 \item{collection}{A \code{mongolite::mongo()}-like object or a test double.}
@@ -14,6 +20,9 @@ mongo_src(collection, name = NULL, schema = NULL, executor = NULL)
 \item{schema}{Optional character vector describing the available fields.}
 
 \item{executor}{Optional function used to execute compiled pipelines.}
+
+\item{cursor_executor}{Optional function used to open a cursor over compiled
+pipelines.}
 }
 \value{
 A \code{mongo_src} object.
@@ -24,7 +33,14 @@ Construct a MongoDB source wrapper
 \examples{
 collection <- list(
   name = "orders",
-  aggregate = function(pipeline_json, ...) {
+  aggregate = function(pipeline_json, iterate = FALSE, ...) {
+    if (iterate) {
+      data <- tibble::tibble(status = "paid", amount = 10)
+      return(local({
+        page <- function(size = 1000) data
+        structure(environment(), class = "mongo_iter")
+      }))
+    }
     tibble::tibble(status = "paid", amount = 10)
   }
 )

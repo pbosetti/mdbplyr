@@ -29,6 +29,7 @@ knitr::opts_chunk$set(
 #' The practical advantages are:
 #' 
 #' - lazy query construction until `collect()`,
+#' - cursor-based streaming with `cursor()`,
 #' - direct translation to MongoDB aggregation stages,
 #' - `show_query()` for inspectable pipeline output,
 #' - explicit unsupported-feature errors instead of silent fallback,
@@ -91,6 +92,20 @@ knitr::opts_chunk$set(
 #   filter(species == "Human", height > 180) |>
 #   select(name, height, mass) |>
 #   show_query()
+
+#' 
+#' ## Streaming with `cursor()`
+#' 
+#' When you want a MongoDB iterator instead of an eagerly materialized tibble,
+#' open the lazy query with `cursor()`.
+#' 
+## ----inspect-cursor, eval = FALSE---------------------------------------------
+# iter <- starwars_tbl |>
+#   filter(species == "Human", height > 180) |>
+#   select(name, height, mass) |>
+#   cursor()
+# 
+# iter$page(10)
 
 #' 
 #' # Supported verbs

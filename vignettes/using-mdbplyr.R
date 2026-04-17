@@ -44,6 +44,14 @@ knitr::opts_chunk$set(
 #   select(name, height, mass) |>
 #   show_query()
 
+## ----inspect-cursor, eval = FALSE---------------------------------------------
+# iter <- starwars_tbl |>
+#   filter(species == "Human", height > 180) |>
+#   select(name, height, mass) |>
+#   cursor()
+# 
+# iter$page(10)
+
 ## ----verb-filter, eval = FALSE------------------------------------------------
 # starwars_tbl |>
 #   filter(species == "Droid", height > 100) |>

@@ -15,6 +15,40 @@ test_that("rename requires known fields", {
   expect_error(dplyr::rename(tbl, z = x), "requires known fields")
 })
 
+test_that("rename supports renaming an existing column", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:3, y = 4:6))
+
+  renamed <- dplyr::rename(tbl, test = x)
+
+  expect_equal(schema_fields(renamed), c("test", "y"))
+  expect_equal(
+    collect(renamed),
+    tibble::tibble(test = 1:3, y = 4:6)
+  )
+})
+
+test_that("mutate supports overwriting an existing column with exponentiation", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:3, y = 4:6))
+
+  mutated <- dplyr::mutate(tbl, x = x^2)
+
+  expect_equal(schema_fields(mutated), c("x", "y"))
+  expect_equal(
+    collect(mutated),
+    tibble::tibble(x = c(1, 4, 9), y = 4:6)
+  )
+})
+
+test_that("cursor requires cursor-capable sources", {
+  tbl <- tbl_mongo(
+    list(name = "orders"),
+    schema = c("x"),
+    executor = function(pipeline, ...) tibble::tibble(x = 1)
+  )
+
+  expect_error(cursor(tbl), "requires a collection with an \\$aggregate")
+})
+
 test_that("tbl_mongo methods are registered on dplyr generics", {
   dplyr_ns <- asNamespace("dplyr")
 

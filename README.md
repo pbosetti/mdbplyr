@@ -31,6 +31,7 @@ pak::pak("pbosetti/mdbplyr")
 - `mongo_src()`
 - `tbl_mongo()`
 - `collect()`
+- `cursor()`
 - `show_query()`
 - `schema_fields()`
 - `append_stage()`
@@ -52,10 +53,14 @@ pak::pak("pbosetti/mdbplyr")
 
 - field references, including backticked dot paths such as `` `user.age` ``,
 - scalar literals,
-- comparison operators,
+- comparison operators, including `%in%`,
 - boolean operators,
-- arithmetic operators,
-- `abs()`, `sqrt()`, `log()`, `exp()`, `round()`,
+- arithmetic operators, including `%%` and `^`,
+- `abs()`, `sqrt()`, `log()`, `log10()`, `exp()`, `floor()`, `ceiling()`, `trunc()`, `round()`,
+- `sin()`, `cos()`, `tan()`, `asin()`, `acos()`, `atan()`, `atan2()`,
+- `sinh()`, `cosh()`, `tanh()`, `asinh()`, `acosh()`, `atanh()`,
+- `pmin()`, `pmax()`,
+- `tolower()`, `toupper()`, `nchar()`, `paste()`, `paste0()`, `substr()`, `substring()`,
 - `if_else()`,
 - `case_when()`,
 - `is.na()`,
@@ -90,6 +95,9 @@ query <- orders |>
 
 show_query(query)
 result <- collect(query)
+
+iter <- cursor(query)
+first_page <- iter$page(5)
 ```
 
 When field metadata is not discoverable from the collection object, pass `schema = ...` to `tbl_mongo()` so that projection and rename operations can stay explicit and lazy.

@@ -65,9 +65,7 @@ rename.tbl_mongo <- function(.data, ...) {
     if (!old_name %in% names(mapping)) {
       abort_invalid("rename()", paste0("cannot rename unknown field `", old_name, "`."))
     }
-    value <- mapping[[old_name]]
-    mapping[[old_name]] <- NULL
-    mapping[[new_name]] <- value
+    names(mapping)[names(mapping) == old_name] <- new_name
   }
 
   update_ir(.data, projection = as_named_character(mapping))

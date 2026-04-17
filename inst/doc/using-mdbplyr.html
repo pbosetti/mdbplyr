@@ -356,6 +356,7 @@ clearly when a verb or expression is outside the supported subset.</p>
 <p>The practical advantages are:</p>
 <ul>
 <li>lazy query construction until <code>collect()</code>,</li>
+<li>cursor-based streaming with <code>cursor()</code>,</li>
 <li>direct translation to MongoDB aggregation stages,</li>
 <li><code>show_query()</code> for inspectable pipeline output,</li>
 <li>explicit unsupported-feature errors instead of silent fallback,</li>
@@ -413,6 +414,17 @@ the query.</p>
 <span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="fu">select</span>(name, height, mass) <span class="sc">|&gt;</span></span>
 <span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  <span class="fu">show_query</span>()</span></code></pre></div>
 </div>
+<div id="streaming-with-cursor" class="section level2">
+<h2>Streaming with <code>cursor()</code></h2>
+<p>When you want a MongoDB iterator instead of an eagerly materialized
+tibble, open the lazy query with <code>cursor()</code>.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>iter <span class="ot">&lt;-</span> starwars_tbl <span class="sc">|&gt;</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="fu">filter</span>(species <span class="sc">==</span> <span class="st">&quot;Human&quot;</span>, height <span class="sc">&gt;</span> <span class="dv">180</span>) <span class="sc">|&gt;</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="fu">select</span>(name, height, mass) <span class="sc">|&gt;</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="fu">cursor</span>()</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>iter<span class="sc">$</span><span class="fu">page</span>(<span class="dv">10</span>)</span></code></pre></div>
+</div>
 </div>
 <div id="supported-verbs" class="section level1">
 <h1>Supported verbs</h1>
@@ -421,71 +433,71 @@ the query.</p>
 collection.</p>
 <div id="filter" class="section level2">
 <h2><code>filter()</code></h2>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="fu">filter</span>(species <span class="sc">==</span> <span class="st">&quot;Droid&quot;</span>, height <span class="sc">&gt;</span> <span class="dv">100</span>) <span class="sc">|&gt;</span></span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="fu">filter</span>(species <span class="sc">==</span> <span class="st">&quot;Droid&quot;</span>, height <span class="sc">&gt;</span> <span class="dv">100</span>) <span class="sc">|&gt;</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
 </div>
 <div id="select" class="section level2">
 <h2><code>select()</code></h2>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="fu">select</span>(name, species, homeworld) <span class="sc">|&gt;</span></span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  <span class="fu">select</span>(name, species, homeworld) <span class="sc">|&gt;</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
 </div>
 <div id="rename" class="section level2">
 <h2><code>rename()</code></h2>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">character_name =</span> name, <span class="at">planet =</span> homeworld) <span class="sc">|&gt;</span></span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">character_name =</span> name, <span class="at">planet =</span> homeworld) <span class="sc">|&gt;</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
 </div>
 <div id="mutate" class="section level2">
 <h2><code>mutate()</code></h2>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">height_m =</span> height <span class="sc">/</span> <span class="dv">100</span>, <span class="at">bmi_like =</span> mass <span class="sc">/</span> (height_m <span class="sc">*</span> height_m)) <span class="sc">|&gt;</span></span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="fu">select</span>(name, height, mass, height_m, bmi_like) <span class="sc">|&gt;</span></span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">height_m =</span> height <span class="sc">/</span> <span class="dv">100</span>, <span class="at">bmi_like =</span> mass <span class="sc">/</span> (height_m <span class="sc">*</span> height_m)) <span class="sc">|&gt;</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="fu">select</span>(name, height, mass, height_m, bmi_like) <span class="sc">|&gt;</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
 </div>
 <div id="transmute" class="section level2">
 <h2><code>transmute()</code></h2>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="fu">transmute</span>(<span class="at">name =</span> name, <span class="at">height_m =</span> height <span class="sc">/</span> <span class="dv">100</span>) <span class="sc">|&gt;</span></span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="fu">transmute</span>(<span class="at">name =</span> name, <span class="at">height_m =</span> height <span class="sc">/</span> <span class="dv">100</span>) <span class="sc">|&gt;</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
 </div>
 <div id="arrange" class="section level2">
 <h2><code>arrange()</code></h2>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(height), name) <span class="sc">|&gt;</span></span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="fu">select</span>(name, height) <span class="sc">|&gt;</span></span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>  <span class="fu">slice_head</span>(<span class="at">n =</span> <span class="dv">10</span>) <span class="sc">|&gt;</span></span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(height), name) <span class="sc">|&gt;</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>  <span class="fu">select</span>(name, height) <span class="sc">|&gt;</span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>  <span class="fu">slice_head</span>(<span class="at">n =</span> <span class="dv">10</span>) <span class="sc">|&gt;</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
 </div>
 <div id="group_by" class="section level2">
 <h2><code>group_by()</code></h2>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>  <span class="fu">group_by</span>(species)</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>  <span class="fu">group_by</span>(species)</span></code></pre></div>
 </div>
 <div id="summarise" class="section level2">
 <h2><code>summarise()</code></h2>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>  <span class="fu">group_by</span>(species) <span class="sc">|&gt;</span></span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
-<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>    <span class="at">n =</span> <span class="fu">n</span>(),</span>
-<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>    <span class="at">avg_height =</span> <span class="fu">mean</span>(height),</span>
-<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>    <span class="at">max_mass =</span> <span class="fu">max</span>(mass)</span>
-<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(n)) <span class="sc">|&gt;</span></span>
-<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>  <span class="fu">group_by</span>(species) <span class="sc">|&gt;</span></span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>    <span class="at">n =</span> <span class="fu">n</span>(),</span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>    <span class="at">avg_height =</span> <span class="fu">mean</span>(height),</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>    <span class="at">max_mass =</span> <span class="fu">max</span>(mass)</span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(n)) <span class="sc">|&gt;</span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
 </div>
 <div id="slice_head" class="section level2">
 <h2><code>slice_head()</code></h2>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>  <span class="fu">select</span>(name, species) <span class="sc">|&gt;</span></span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>  <span class="fu">slice_head</span>(<span class="at">n =</span> <span class="dv">5</span>) <span class="sc">|&gt;</span></span>
-<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>starwars_tbl <span class="sc">|&gt;</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>  <span class="fu">select</span>(name, species) <span class="sc">|&gt;</span></span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>  <span class="fu">slice_head</span>(<span class="at">n =</span> <span class="dv">5</span>) <span class="sc">|&gt;</span></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
 </div>
 <div id="head" class="section level2">
 <h2><code>head()</code></h2>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">head</span>(starwars_tbl, <span class="dv">5</span>) <span class="sc">|&gt;</span></span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">head</span>(starwars_tbl, <span class="dv">5</span>) <span class="sc">|&gt;</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>  <span class="fu">collect</span>()</span></code></pre></div>
 </div>
 </div>
 <div id="notes" class="section level1">

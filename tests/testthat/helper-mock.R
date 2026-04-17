@@ -8,9 +8,13 @@ mock_collection <- function(data, name = "mock_collection") {
     class = "mock_mongo"
   ) -> collection
 
-  collection$aggregate <- function(pipeline_json, ...) {
+  collection$aggregate <- function(pipeline_json, iterate = FALSE, ...) {
     pipeline <- jsonlite::fromJSON(pipeline_json, simplifyVector = FALSE)
-    run_pipeline(data, pipeline)
+    result <- run_pipeline(data, pipeline)
+    if (isTRUE(iterate)) {
+      return(mock_cursor(result))
+    }
+    result
   }
 
   collection
@@ -19,6 +23,64 @@ mock_collection <- function(data, name = "mock_collection") {
 mock_tbl <- function(data, name = "mock_collection") {
   collection <- mock_collection(data, name = name)
   tbl_mongo(collection, schema = names(data), executor = function(pipeline, ...) run_pipeline(data, pipeline))
+}
+
+mock_cursor <- function(data) {
+  rows <- tibble::as_tibble(data)
+  self <- local({
+    offset <- 1L
+
+    next_index <- function(size) {
+      if (offset > nrow(rows)) {
+        return(integer())
+      }
+      start <- offset
+      stop <- min(nrow(rows), offset + size - 1L)
+      offset <<- stop + 1L
+      seq.int(start, stop)
+    }
+
+    one <- function() {
+      idx <- next_index(1L)
+      if (!length(idx)) {
+        return(NULL)
+      }
+      as.list(rows[idx, , drop = FALSE])
+    }
+
+    batch <- function(size = 1000) {
+      idx <- next_index(size)
+      if (!length(idx)) {
+        return(list())
+      }
+      lapply(idx, function(i) as.list(rows[i, , drop = FALSE]))
+    }
+
+    json <- function(size = 1000) {
+      idx <- next_index(size)
+      if (!length(idx)) {
+        return(character())
+      }
+      vapply(
+        idx,
+        function(i) jsonlite::toJSON(rows[i, , drop = FALSE], auto_unbox = TRUE, null = "null"),
+        character(1)
+      )
+    }
+
+    page <- function(size = 1000) {
+      idx <- next_index(size)
+      if (!length(idx)) {
+        return(tibble::as_tibble(rows[0, , drop = FALSE]))
+      }
+      tibble::as_tibble(rows[idx, , drop = FALSE])
+    }
+
+    environment()
+  })
+
+  lockEnvironment(self, FALSE)
+  structure(self, class = c("mongo_iter", "jeroen", class(self)))
 }
 
 run_pipeline <- function(data, pipeline) {
@@ -130,10 +192,38 @@ eval_expr <- function(expr, data) {
     `$subtract` = eval_expr(args[[1]], data) - eval_expr(args[[2]], data),
     `$multiply` = Reduce(`*`, lapply(args, eval_expr, data = data)),
     `$divide` = eval_expr(args[[1]], data) / eval_expr(args[[2]], data),
+    `$pow` = eval_expr(args[[1]], data) ^ eval_expr(args[[2]], data),
+    `$mod` = eval_expr(args[[1]], data) %% eval_expr(args[[2]], data),
+    `$floor` = floor(eval_expr(args[[1]], data)),
+    `$ceil` = ceiling(eval_expr(args[[1]], data)),
+    `$trunc` = eval_trunc(args, data),
+    `$log` = log(eval_expr(args[[1]], data), eval_expr(args[[2]], data)),
+    `$log10` = log10(eval_expr(args[[1]], data)),
     `$abs` = abs(eval_expr(args[[1]], data)),
     `$sqrt` = sqrt(eval_expr(args[[1]], data)),
     `$ln` = log(eval_expr(args[[1]], data)),
     `$exp` = exp(eval_expr(args[[1]], data)),
+    `$sin` = sin(eval_expr(args[[1]], data)),
+    `$cos` = cos(eval_expr(args[[1]], data)),
+    `$tan` = tan(eval_expr(args[[1]], data)),
+    `$asin` = asin(eval_expr(args[[1]], data)),
+    `$acos` = acos(eval_expr(args[[1]], data)),
+    `$atan` = atan(eval_expr(args[[1]], data)),
+    `$atan2` = atan2(eval_expr(args[[1]], data), eval_expr(args[[2]], data)),
+    `$sinh` = sinh(eval_expr(args[[1]], data)),
+    `$cosh` = cosh(eval_expr(args[[1]], data)),
+    `$tanh` = tanh(eval_expr(args[[1]], data)),
+    `$asinh` = asinh(eval_expr(args[[1]], data)),
+    `$acosh` = acosh(eval_expr(args[[1]], data)),
+    `$atanh` = atanh(eval_expr(args[[1]], data)),
+    `$min` = Reduce(pmin, lapply(args, eval_expr, data = data)),
+    `$max` = Reduce(pmax, lapply(args, eval_expr, data = data)),
+    `$concat` = eval_concat(args, data),
+    `$toLower` = tolower(eval_expr(args[[1]], data)),
+    `$toUpper` = toupper(eval_expr(args[[1]], data)),
+    `$strLenCP` = nchar(eval_expr(args[[1]], data), type = "chars", allowNA = TRUE, keepNA = TRUE),
+    `$substrCP` = eval_substr_cp(args, data),
+    `$in` = eval_in(args, data),
     `$round` = round(eval_expr(args[[1]], data), args[[2]]),
     `$cond` = ifelse(eval_expr(args$`if`, data), eval_expr(args$then, data), eval_expr(args$`else`, data)),
     `$switch` = eval_switch(args, data),
@@ -159,6 +249,53 @@ eval_switch <- function(spec, data) {
     result <- ifelse(mask, branch_value, result)
   }
   result
+}
+
+eval_trunc <- function(args, data) {
+  values <- eval_expr(args[[1]], data)
+  if (length(args) == 1) {
+    return(trunc(values))
+  }
+
+  digits <- eval_expr(args[[2]], data)
+  scale <- 10 ^ digits
+  trunc(values * scale) / scale
+}
+
+eval_concat <- function(args, data) {
+  parts <- lapply(args, eval_expr, data = data)
+  do.call(paste0, parts)
+}
+
+eval_substr_cp <- function(args, data) {
+  text <- eval_expr(args[[1]], data)
+  start <- eval_expr(args[[2]], data)
+  count <- eval_expr(args[[3]], data)
+  mapply(
+    function(value, first, width) {
+      substring(value, first = first + 1, last = first + width)
+    },
+    text,
+    start,
+    count,
+    USE.NAMES = FALSE
+  )
+}
+
+eval_in <- function(args, data) {
+  lhs <- eval_expr(args[[1]], data)
+  rhs_spec <- args[[2]]
+  rhs <- if (!is.list(rhs_spec) && length(rhs_spec) > 1) {
+    replicate(nrow(data), rhs_spec, simplify = FALSE)
+  } else {
+    eval_expr(rhs_spec, data)
+  }
+
+  if (!is.list(rhs)) {
+    rhs <- replicate(length(lhs), rhs, simplify = FALSE)
+  }
+
+  mapply(function(value, options) value %in% options, lhs, rhs, USE.NAMES = FALSE)
 }
 
 resolve_field <- function(data, path) {
