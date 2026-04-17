@@ -155,7 +155,6 @@ full_join.tbl_mongo <- function(x, y, by = NULL, copy = FALSE,
 }
 
 #' @rdname mongo_join
-#' @param ... Ignored.
 #' @export
 semi_join.tbl_mongo <- function(x, y, by = NULL, copy = FALSE, ...) {
   build_join_tbl(x, y, by, "semi")

@@ -191,7 +191,7 @@ apply_add_fields <- function(data, spec) {
 apply_project <- function(data, spec) {
   non_id <- spec[names(spec) != "_id"]
 
-  # Exclusion mode: all non-_id values are 0L → drop those fields.
+  # Exclusion mode: all non-_id values are 0L -> drop those fields.
   if (length(non_id) > 0L && all(vapply(non_id, identical, logical(1L), 0L))) {
     keep <- setdiff(names(data), names(non_id))
     return(tibble::as_tibble(data[, keep, drop = FALSE]))
