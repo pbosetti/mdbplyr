@@ -1,6 +1,6 @@
 # mdbplyr
 
-![](mdbplyr.png)
+<img src="mdbplyr.png" width="200" />
 
 A native tidy lazy backend for MongoDB in R.
 
