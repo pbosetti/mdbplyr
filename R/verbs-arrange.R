@@ -75,6 +75,7 @@ dots_n <- function(...) {
 }
 
 #' @importFrom utils head
+#' @param x A `tbl_mongo` object.
 #' @rdname mongo_slice_head
 #' @export
 head.tbl_mongo <- function(x, n = 6L, ...) {

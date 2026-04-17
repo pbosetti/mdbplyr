@@ -14,12 +14,12 @@ Depends:
 Imports:
     cli,
     dplyr,
-    mongolite,
     jsonlite,
     rlang,
     tibble
 Suggests:
     knitr,
+    mongolite,
     rmarkdown,
     testthat (>= 3.0.0)
 VignetteBuilder: knitr

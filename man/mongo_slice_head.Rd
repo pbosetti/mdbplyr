@@ -19,6 +19,8 @@ slice_head.tbl_mongo(.data, ..., n = NULL, prop = NULL, by = NULL)
 \item{prop}{Unsupported.}
 
 \item{by}{Unsupported.}
+
+\item{x}{A \code{tbl_mongo} object.}
 }
 \value{
 A modified \code{tbl_mongo} object.

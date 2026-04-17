@@ -2,3 +2,4 @@
 ^AGENTS\.md$
 ^README\.md$
 ^.*\.Rproj$
+^\.Rproj\.user$
