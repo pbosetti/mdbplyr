@@ -4,7 +4,7 @@
 \alias{summarise.tbl_mongo}
 \title{Summarise a lazy Mongo query}
 \usage{
-summarise.tbl_mongo(.data, ..., .by = NULL, .groups = NULL)
+\method{summarise}{tbl_mongo}(.data, ..., .by = NULL, .groups = NULL)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}

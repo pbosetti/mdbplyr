@@ -4,7 +4,7 @@
 \alias{rename.tbl_mongo}
 \title{Rename fields in a lazy Mongo query}
 \usage{
-rename.tbl_mongo(.data, ...)
+\method{rename}{tbl_mongo}(.data, ...)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}

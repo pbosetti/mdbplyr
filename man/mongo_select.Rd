@@ -4,7 +4,7 @@
 \alias{select.tbl_mongo}
 \title{Select fields from a lazy Mongo query}
 \usage{
-select.tbl_mongo(.data, ...)
+\method{select}{tbl_mongo}(.data, ...)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}

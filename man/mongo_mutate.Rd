@@ -4,7 +4,7 @@
 \alias{mutate.tbl_mongo}
 \title{Add computed fields to a lazy Mongo query}
 \usage{
-mutate.tbl_mongo(.data, ...)
+\method{mutate}{tbl_mongo}(.data, ...)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}

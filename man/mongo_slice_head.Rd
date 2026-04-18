@@ -5,7 +5,7 @@
 \alias{head.tbl_mongo}
 \title{Limit a lazy Mongo query}
 \usage{
-slice_head.tbl_mongo(.data, ..., n = NULL, prop = NULL, by = NULL)
+\method{slice_head}{tbl_mongo}(.data, ..., n = NULL, prop = NULL, by = NULL)
 
 \method{head}{tbl_mongo}(x, n = 6L, ...)
 }

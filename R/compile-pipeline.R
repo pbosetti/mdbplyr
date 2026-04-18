@@ -146,16 +146,22 @@ compile_join_stages <- function(join) {
   # ---- join-type-specific stages --------------------------------------------
   if (join$type == "semi") {
     # Keep only rows that have at least one match.
-    stages[[2L]] <- list(`$match` = stats::setNames(
-      list(list(`$ne` = list())), JOINED
-    ))
+    stages[[2L]] <- list(`$match` = list(`$expr` = list(
+      `$gt` = list(
+        list(`$size` = field_reference(JOINED)),
+        0L
+      )
+    )))
     stages[[3L]] <- list(`$project` = stats::setNames(list(0L), JOINED))
 
   } else if (join$type == "anti") {
     # Keep only rows with no match.
-    stages[[2L]] <- list(`$match` = stats::setNames(
-      list(list(`$size` = 0L)), JOINED
-    ))
+    stages[[2L]] <- list(`$match` = list(`$expr` = list(
+      `$eq` = list(
+        list(`$size` = field_reference(JOINED)),
+        0L
+      )
+    )))
     stages[[3L]] <- list(`$project` = stats::setNames(list(0L), JOINED))
 
   } else {

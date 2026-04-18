@@ -90,6 +90,7 @@ build_join_tbl <- function(x, y, by, join_type) {
 #' @param suffix Ignored (column-name conflicts are not yet handled
 #'   automatically; rename columns beforehand if needed).
 #' @param keep Ignored (included for dplyr compatibility).
+#' @param na_matches Ignored (included for dplyr compatibility).
 #' @param ... Ignored.
 #'
 #' @return A modified `tbl_mongo` object with the join recorded in the IR.

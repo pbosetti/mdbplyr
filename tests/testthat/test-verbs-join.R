@@ -87,7 +87,7 @@ test_that("left_join compiles $lookup with preserveNullAndEmptyArrays in $unwind
   expect_true(isTRUE(unwind_spec$preserveNullAndEmptyArrays))
 })
 
-test_that("semi_join compiles $lookup + $match ($ne []) + $project", {
+test_that("semi_join compiles $lookup + $match ($expr $size > 0) + $project", {
   db <- make_db()
   q  <- dplyr::semi_join(db$orders, db$customers, by = "order_id")
   pl <- compile_pipeline(q)
@@ -96,10 +96,11 @@ test_that("semi_join compiles $lookup + $match ($ne []) + $project", {
   expect_equal(stage_names, c("$lookup", "$match", "$project"))
 
   match_spec <- pl[[2L]]$`$match`
-  expect_true(!is.null(match_spec$`__mdbplyr_joined__`$`$ne`))
+  expect_equal(match_spec$`$expr`$`$gt`[[1L]]$`$size`, "$__mdbplyr_joined__")
+  expect_equal(match_spec$`$expr`$`$gt`[[2L]], 0L)
 })
 
-test_that("anti_join compiles $lookup + $match ($size 0) + $project", {
+test_that("anti_join compiles $lookup + $match ($expr $size == 0) + $project", {
   db <- make_db()
   q  <- dplyr::anti_join(db$orders, db$customers, by = "order_id")
   pl <- compile_pipeline(q)
@@ -108,7 +109,8 @@ test_that("anti_join compiles $lookup + $match ($size 0) + $project", {
   expect_equal(stage_names, c("$lookup", "$match", "$project"))
 
   match_spec <- pl[[2L]]$`$match`
-  expect_equal(match_spec$`__mdbplyr_joined__`$`$size`, 0L)
+  expect_equal(match_spec$`$expr`$`$eq`[[1L]]$`$size`, "$__mdbplyr_joined__")
+  expect_equal(match_spec$`$expr`$`$eq`[[2L]], 0L)
 })
 
 test_that("$lookup stage uses correct from / let / pipeline", {

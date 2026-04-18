@@ -2,6 +2,9 @@
 #'
 #' A native tidy lazy backend for MongoDB aggregation pipelines.
 #'
+#' @importFrom dplyr anti_join arrange filter full_join group_by inner_join
+#'   left_join mutate rename right_join select semi_join slice_head summarise
+#'   transmute
 #' @keywords internal
 "_PACKAGE"
 

@@ -4,7 +4,7 @@
 \alias{arrange.tbl_mongo}
 \title{Arrange a lazy Mongo query}
 \usage{
-arrange.tbl_mongo(.data, ..., .by_group = FALSE)
+\method{arrange}{tbl_mongo}(.data, ..., .by_group = FALSE)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}

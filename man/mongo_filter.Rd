@@ -4,7 +4,7 @@
 \alias{filter.tbl_mongo}
 \title{Filter a lazy Mongo query}
 \usage{
-filter.tbl_mongo(.data, ..., .by = NULL, .preserve = FALSE)
+\method{filter}{tbl_mongo}(.data, ..., .by = NULL, .preserve = FALSE)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}

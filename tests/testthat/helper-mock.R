@@ -306,6 +306,7 @@ eval_expr <- function(expr, data) {
     `$strLenCP` = nchar(eval_expr(args[[1]], data), type = "chars", allowNA = TRUE, keepNA = TRUE),
     `$substrCP` = eval_substr_cp(args, data),
     `$in` = eval_in(args, data),
+    `$size` = eval_size(args[[1]], data),
     `$round` = round(eval_expr(args[[1]], data), args[[2]]),
     `$cond` = ifelse(eval_expr(args$`if`, data), eval_expr(args$then, data), eval_expr(args$`else`, data)),
     `$switch` = eval_switch(args, data),
@@ -378,6 +379,22 @@ eval_in <- function(args, data) {
   }
 
   mapply(function(value, options) value %in% options, lhs, rhs, USE.NAMES = FALSE)
+}
+
+eval_size <- function(arg, data) {
+  values <- eval_expr(arg, data)
+  vapply(values, function(value) {
+    if (is.null(value)) {
+      return(0L)
+    }
+    if (is.data.frame(value)) {
+      return(nrow(value))
+    }
+    if (is.list(value)) {
+      return(length(value))
+    }
+    length(value)
+  }, integer(1L), USE.NAMES = FALSE)
 }
 
 resolve_field <- function(data, path) {

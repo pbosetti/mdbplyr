@@ -4,7 +4,7 @@
 \alias{transmute.tbl_mongo}
 \title{Compute and keep only derived fields}
 \usage{
-transmute.tbl_mongo(.data, ...)
+\method{transmute}{tbl_mongo}(.data, ...)
 }
 \arguments{
 \item{.data}{A \code{tbl_mongo} object.}
