@@ -50,6 +50,10 @@ pak::pak("pbosetti/mdbplyr")
 - `summarise()`
 - `slice_head()`
 - `head()`
+- `inner_join()`
+- `left_join()`
+- `semi_join()`
+- `anti_join()`
 
 ### Supported expressions
 
@@ -74,7 +78,9 @@ pak::pak("pbosetti/mdbplyr")
 - `mutate()` and `transmute()` require named expressions,
 - `group_by()` supports bare field names only,
 - `summarise()` supports only the documented aggregate functions,
-- joins, window functions, `across()`, reshaping, and write operations are out of scope.
+- joins require both tables to be `tbl_mongo` objects backed by collections in the same MongoDB database,
+- `right_join()` and `full_join()` are not supported (MongoDB has no native full outer join stage starting from the left collection),
+- window functions, `across()`, reshaping, and write operations are out of scope.
 
 ## Example
 
@@ -103,6 +109,43 @@ first_page <- iter$page(5)
 ```
 
 When field metadata is not discoverable from the collection object, pass `schema = ...` to `tbl_mongo()` so that projection and rename operations can stay explicit and lazy.
+
+### Join example
+
+`inner_join`, `left_join`, `semi_join`, and `anti_join` compile lazily to
+MongoDB `$lookup` aggregation stages. Both tables must be `tbl_mongo` objects
+backed by collections in the **same** MongoDB database.
+
+```r
+orders    <- tbl_mongo(mongolite::mongo("orders",    db = "shop"),
+                       schema = c("order_id", "customer_id", "amount"))
+customers <- tbl_mongo(mongolite::mongo("customers", db = "shop"),
+                       schema = c("customer_id", "name", "country"))
+
+# Inner join: only orders with a matching customer record
+result <- inner_join(orders, customers, by = "customer_id") |>
+  select(order_id, name, amount) |>
+  collect()
+
+# Left join: all orders, NA for fields of unmatched customers
+result <- left_join(orders, customers, by = "customer_id") |> collect()
+
+# Semi join: orders that have at least one matching customer (no extra columns)
+result <- semi_join(orders, customers, by = "customer_id") |> collect()
+
+# Anti join: orders with no matching customer
+result <- anti_join(orders, customers, by = "customer_id") |> collect()
+
+# Multi-key join
+inner_join(sales, budgets, by = c("year", "region")) |> collect()
+
+# Join with a pre-filtered right table (filter is embedded in $lookup)
+active_customers <- filter(customers, country == "Italy")
+inner_join(orders, active_customers, by = "customer_id") |> collect()
+
+# Inspect the generated pipeline without executing
+show_query(inner_join(orders, customers, by = "customer_id"))
+```
 
 ---
 
@@ -146,7 +189,10 @@ MongoDB documents are not rectangular SQL tables. Nested fields, arrays, missing
 | Grouped summaries | Supported | `n()`, `sum()`, `mean()`, `min()`, `max()` |
 | Dot-path fields | Supported with caveats | Use backticked names such as `` `user.age` `` |
 | Manual pipeline stage append | Supported with caveats | `append_stage()` appends raw JSON after generated stages and does not infer schema changes |
-| Joins/window functions | Not supported | Explicitly out of scope |
+| `inner_join` / `left_join` | Supported | Compiles to `$lookup` (correlated pipeline form, MongoDB 3.6+) |
+| `semi_join` / `anti_join` | Supported | Compiles to `$lookup` + `$match` |
+| `right_join` / `full_join` | Not supported | No native MongoDB equivalent; `right_join` can be rewritten as `left_join` with swapped tables |
+| Window functions | Not supported | Explicitly out of scope |
 | Client-side fallback | Not supported | Unsupported features error clearly |
 
 ---
@@ -196,6 +242,8 @@ Typical verb mappings are:
 - `arrange()` -> `$sort`
 - `group_by()` + `summarise()` -> `$group`
 - `slice_head()` / `head()` -> `$limit`
+- `inner_join()` / `left_join()` -> `$lookup` + `$unwind` + `$replaceRoot` + `$project`
+- `semi_join()` / `anti_join()` -> `$lookup` + `$match` + `$project`
 
 This mapping should be documented, inspectable, and testable.
 

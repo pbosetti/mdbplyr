@@ -8,13 +8,19 @@
 #' @keywords internal
 register_tbl_mongo_methods <- function() {
   dplyr_generics <- c(
+    "anti_join",
     "arrange",
     "collect",
     "filter",
+    "full_join",
     "group_by",
+    "inner_join",
+    "left_join",
     "mutate",
     "rename",
+    "right_join",
     "select",
+    "semi_join",
     "show_query",
     "slice_head",
     "summarise",

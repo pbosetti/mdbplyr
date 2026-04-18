@@ -31,6 +31,7 @@ tbl_mongo <- function(collection, name = NULL, schema = NULL, executor = NULL) {
     computed = list(),
     groups = character(),
     summaries = list(),
+    join = NULL,
     order = list(),
     limit = NULL,
     manual_stages = list()
@@ -71,6 +72,13 @@ print.tbl_mongo <- function(x, ...) {
 ")
   cat("  Summaries:", if (length(x$ir$summaries)) paste(names(x$ir$summaries), collapse = ", ") else "<none>", "
 ")
+  if (!is.null(x$ir$join)) {
+    j <- x$ir$join
+    cat("  Join:", j$type, "->", j$from,
+        paste0("(", paste(j$local_keys, j$foreign_keys, sep = "="), ")"),
+        "
+")
+  }
   cat("  Limit:", x$ir$limit %||% "<none>", "
 ")
   cat("  Manual stages:", length(x$ir$manual_stages), "
