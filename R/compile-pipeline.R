@@ -47,8 +47,8 @@ compile_pipeline <- function(x) {
     stages[[length(stages) + 1]] <- list(`$sort` = lapply(ir$order, as.integer))
   }
 
-  if (!is.null(ir$limit)) {
-    stages[[length(stages) + 1]] <- list(`$limit` = as.integer(ir$limit))
+  if (!is.null(ir$slice)) {
+    stages <- c(stages, compile_slice_stages(ir$slice))
   }
 
   if (length(ir$manual_stages) > 0) {
@@ -56,6 +56,50 @@ compile_pipeline <- function(x) {
   }
 
   stages
+}
+
+#' @keywords internal
+compile_slice_stages <- function(slice) {
+  if (identical(slice$verb, "head") && slice$n >= 0L) {
+    return(list(list(`$limit` = as.integer(slice$n))))
+  }
+
+  docs_field <- "__mdbplyr_slice_docs__"
+  slice_ref <- field_reference(docs_field)
+
+  list(
+    list(`$group` = stats::setNames(
+      list(NULL, list(`$push` = "$$ROOT")),
+      c("_id", docs_field)
+    )),
+    list(`$project` = stats::setNames(
+      list(0L, compile_slice_expr(slice, slice_ref)),
+      c("_id", docs_field)
+    )),
+    list(`$unwind` = paste0("$", docs_field)),
+    list(`$replaceRoot` = list(newRoot = paste0("$", docs_field)))
+  )
+}
+
+#' @keywords internal
+compile_slice_expr <- function(slice, docs_ref) {
+  n <- as.integer(slice$n)
+
+  if (identical(slice$verb, "tail") && n >= 0L) {
+    return(list(`$slice` = list(docs_ref, -n)))
+  }
+
+  drop_n <- abs(n)
+  remaining <- list(`$max` = list(
+    0L,
+    list(`$subtract` = list(list(`$size` = docs_ref), drop_n))
+  ))
+
+  if (identical(slice$verb, "head")) {
+    return(list(`$slice` = list(docs_ref, remaining)))
+  }
+
+  list(`$slice` = list(docs_ref, drop_n, remaining))
 }
 
 #' @keywords internal

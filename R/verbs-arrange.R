@@ -41,11 +41,12 @@ arrange.tbl_mongo <- function(.data, ..., .by_group = FALSE) {
   update_ir(.data, order = order)
 }
 
-#' Limit a lazy Mongo query
+#' Slice a lazy Mongo query
 #'
 #' @param .data A `tbl_mongo` object.
 #' @param ... Must be empty.
-#' @param n Number of rows to keep.
+#' @param n Number of rows to keep. Negative values drop rows from the opposite
+#'   end, matching `dplyr`.
 #' @param prop Unsupported.
 #' @param by Unsupported.
 #'
@@ -58,6 +59,7 @@ arrange.tbl_mongo <- function(.data, ..., .by_group = FALSE) {
 #' )
 #'
 #' dplyr::slice_head(tbl, n = 2)
+#' dplyr::slice_tail(tbl, n = 2)
 #' head(tbl, 2)
 #' @rdname mongo_slice_head
 #' @export
@@ -65,8 +67,16 @@ slice_head.tbl_mongo <- function(.data, ..., n = NULL, prop = NULL, by = NULL) {
   if (!is.null(prop) || !is.null(by) || dots_n(...) > 0) {
     abort_unsupported("slice_head()", NULL, "Only slice_head(n = ...) is supported.")
   }
-  limit <- if (is.null(n)) 6L else as.integer(n)
-  update_ir(.data, limit = limit)
+  update_ir(.data, slice = validate_slice_n(n, default_n = 1L, verb = "head", context = "slice_head()"))
+}
+
+#' @rdname mongo_slice_head
+#' @export
+slice_tail.tbl_mongo <- function(.data, ..., n = NULL, prop = NULL, by = NULL) {
+  if (!is.null(prop) || !is.null(by) || dots_n(...) > 0) {
+    abort_unsupported("slice_tail()", NULL, "Only slice_tail(n = ...) is supported.")
+  }
+  update_ir(.data, slice = validate_slice_n(n, default_n = 1L, verb = "tail", context = "slice_tail()"))
 }
 
 #' @keywords internal
@@ -74,10 +84,23 @@ dots_n <- function(...) {
   length(rlang::list2(...))
 }
 
+#' @keywords internal
+validate_slice_n <- function(n, default_n, verb, context) {
+  if (is.null(n)) {
+    return(list(verb = verb, n = default_n))
+  }
+
+  if (!is.numeric(n) || length(n) != 1L || is.na(n) || n != trunc(n)) {
+    abort_invalid(context, "`n` must be a single round number.")
+  }
+
+  list(verb = verb, n = as.integer(n))
+}
+
 #' @importFrom utils head
 #' @param x A `tbl_mongo` object.
 #' @rdname mongo_slice_head
 #' @export
 head.tbl_mongo <- function(x, n = 6L, ...) {
-  update_ir(x, limit = as.integer(n))
+  update_ir(x, slice = validate_slice_n(n, default_n = 6L, verb = "head", context = "head()"))
 }

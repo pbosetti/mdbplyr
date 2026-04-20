@@ -26,3 +26,41 @@ test_that("append_stage appends manual stages after generated pipeline", {
   expect_equal(stage_names, c("$match", "$limit"))
   expect_equal(pipeline[[2]], list(`$limit` = 1))
 })
+
+test_that("slice_tail compiles through array slicing stages", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:5)) |>
+    dplyr::slice_tail(n = 2)
+
+  pipeline <- compile_pipeline(tbl)
+  stage_names <- vapply(pipeline, names, character(1))
+
+  expect_equal(stage_names, c("$group", "$project", "$unwind", "$replaceRoot"))
+  expect_equal(pipeline[[1]]$`$group`$`__mdbplyr_slice_docs__`, list(`$push` = "$$ROOT"))
+  expect_equal(
+    pipeline[[2]]$`$project`$`__mdbplyr_slice_docs__`,
+    list(`$slice` = list("$__mdbplyr_slice_docs__", -2L))
+  )
+})
+
+test_that("negative slice_head compiles through array slicing stages", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:5)) |>
+    dplyr::slice_head(n = -2)
+
+  pipeline <- compile_pipeline(tbl)
+  stage_names <- vapply(pipeline, names, character(1))
+
+  expect_equal(stage_names, c("$group", "$project", "$unwind", "$replaceRoot"))
+  expect_equal(
+    pipeline[[2]]$`$project`$`__mdbplyr_slice_docs__`,
+    list(`$slice` = list(
+      "$__mdbplyr_slice_docs__",
+      list(`$max` = list(
+        0L,
+        list(`$subtract` = list(
+          list(`$size` = "$__mdbplyr_slice_docs__"),
+          2L
+        ))
+      ))
+    ))
+  )
+})

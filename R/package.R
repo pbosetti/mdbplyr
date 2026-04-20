@@ -17,6 +17,7 @@ register_tbl_mongo_methods <- function() {
     "select",
     "show_query",
     "slice_head",
+    "slice_tail",
     "summarise",
     "transmute"
   )

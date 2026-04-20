@@ -2,10 +2,13 @@
 % Please edit documentation in R/verbs-arrange.R
 \name{slice_head.tbl_mongo}
 \alias{slice_head.tbl_mongo}
+\alias{slice_tail.tbl_mongo}
 \alias{head.tbl_mongo}
-\title{Limit a lazy Mongo query}
+\title{Slice a lazy Mongo query}
 \usage{
 slice_head.tbl_mongo(.data, ..., n = NULL, prop = NULL, by = NULL)
+
+\method{slice_tail}{tbl_mongo}(.data, ..., n = NULL, prop = NULL, by = NULL)
 
 \method{head}{tbl_mongo}(x, n = 6L, ...)
 }
@@ -14,7 +17,8 @@ slice_head.tbl_mongo(.data, ..., n = NULL, prop = NULL, by = NULL)
 
 \item{...}{Must be empty.}
 
-\item{n}{Number of rows to keep.}
+\item{n}{Number of rows to keep. Negative values drop rows from the opposite
+end, matching \code{dplyr}.}
 
 \item{prop}{Unsupported.}
 
@@ -26,7 +30,7 @@ slice_head.tbl_mongo(.data, ..., n = NULL, prop = NULL, by = NULL)
 A modified \code{tbl_mongo} object.
 }
 \description{
-Limit a lazy Mongo query
+Slice a lazy Mongo query
 }
 \examples{
 tbl <- tbl_mongo(
@@ -36,5 +40,6 @@ tbl <- tbl_mongo(
 )
 
 dplyr::slice_head(tbl, n = 2)
+dplyr::slice_tail(tbl, n = 2)
 head(tbl, 2)
 }

@@ -89,3 +89,54 @@ test_that("append_stage participates in lazy execution", {
 
   expect_equal(result$y, c(40, 30))
 })
+
+test_that("slice_tail keeps the last rows in stream order", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:5, y = c(10, 20, 30, 40, 50)))
+
+  result <- tbl |>
+    dplyr::slice_tail(n = 2) |>
+    collect()
+
+  expect_equal(result$x, c(4L, 5L))
+  expect_equal(result$y, c(40, 50))
+})
+
+test_that("negative slice_head drops rows from the tail", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:5))
+
+  result <- tbl |>
+    dplyr::slice_head(n = -2) |>
+    collect()
+
+  expect_equal(result$x, c(1L, 2L, 3L))
+})
+
+test_that("negative slice_tail drops rows from the head", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:5))
+
+  result <- tbl |>
+    dplyr::slice_tail(n = -2) |>
+    collect()
+
+  expect_equal(result$x, c(3L, 4L, 5L))
+})
+
+test_that("slice_head defaults to one row like dplyr", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:5))
+
+  result <- tbl |>
+    dplyr::slice_head() |>
+    collect()
+
+  expect_equal(result$x, 1L)
+})
+
+test_that("slice_tail defaults to one row like dplyr", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:5))
+
+  result <- tbl |>
+    dplyr::slice_tail() |>
+    collect()
+
+  expect_equal(result$x, 5L)
+})

@@ -153,9 +153,16 @@ apply_group <- function(data, spec) {
     for (name in summaries) {
       row[[name]] <- eval_agg(spec[[name]], subset)
     }
-    rows[[i]] <- row
+    rows[[i]] <- tibble::as_tibble_row(lapply(row, as_group_cell))
   }
-  tibble::as_tibble(rows)
+  dplyr::bind_rows(rows)
+}
+
+as_group_cell <- function(value) {
+  if (is.null(value) || is.list(value) || is.data.frame(value) || length(value) != 1L) {
+    return(list(value))
+  }
+  value
 }
 
 apply_sort <- function(data, spec) {
@@ -224,6 +231,8 @@ eval_expr <- function(expr, data) {
     `$strLenCP` = nchar(eval_expr(args[[1]], data), type = "chars", allowNA = TRUE, keepNA = TRUE),
     `$substrCP` = eval_substr_cp(args, data),
     `$in` = eval_in(args, data),
+    `$slice` = eval_slice(args, data),
+    `$size` = eval_size(args[[1]], data),
     `$round` = round(eval_expr(args[[1]], data), args[[2]]),
     `$cond` = ifelse(eval_expr(args$`if`, data), eval_expr(args$then, data), eval_expr(args$`else`, data)),
     `$switch` = eval_switch(args, data),
@@ -298,6 +307,82 @@ eval_in <- function(args, data) {
   mapply(function(value, options) value %in% options, lhs, rhs, USE.NAMES = FALSE)
 }
 
+eval_size <- function(arg, data) {
+  values <- eval_expr(arg, data)
+  vapply(values, function(value) {
+    if (is.null(value)) {
+      return(0L)
+    }
+    if (is.data.frame(value)) {
+      return(nrow(value))
+    }
+    if (is.list(value)) {
+      return(length(value))
+    }
+    length(value)
+  }, integer(1L), USE.NAMES = FALSE)
+}
+
+eval_slice <- function(args, data) {
+  values <- eval_expr(args[[1]], data)
+
+  if (length(args) == 2L) {
+    count <- eval_expr(args[[2]], data)
+    return(mapply(slice_value_count, values, count, SIMPLIFY = FALSE))
+  }
+
+  start <- eval_expr(args[[2]], data)
+  count <- eval_expr(args[[3]], data)
+  mapply(slice_value_range, values, start, count, SIMPLIFY = FALSE)
+}
+
+slice_value_count <- function(value, count) {
+  items <- as_slice_items(value)
+  size <- length(items)
+  count <- as.integer(count[[1]])
+
+  if (count >= 0L) {
+    return(items[seq_len(min(size, count))])
+  }
+
+  take <- min(size, abs(count))
+  if (take == 0L) {
+    return(items[0L])
+  }
+  items[seq.int(size - take + 1L, size)]
+}
+
+slice_value_range <- function(value, start, count) {
+  items <- as_slice_items(value)
+  size <- length(items)
+  start <- as.integer(start[[1]])
+  count <- as.integer(count[[1]])
+
+  if (count <= 0L || start >= size) {
+    return(items[0L])
+  }
+
+  first <- max(1L, start + 1L)
+  last <- min(size, start + count)
+  items[seq.int(first, last)]
+}
+
+as_slice_items <- function(value) {
+  if (is.null(value)) {
+    return(list())
+  }
+  if (is.list(value) && length(value) == 1L && is.list(value[[1L]]) && !is.data.frame(value[[1L]])) {
+    return(value[[1L]])
+  }
+  if (is.data.frame(value)) {
+    return(split(value, seq_len(nrow(value))))
+  }
+  if (is.list(value)) {
+    return(value)
+  }
+  as.list(value)
+}
+
 resolve_field <- function(data, path) {
   if (path %in% names(data)) {
     return(data[[path]])
@@ -322,6 +407,8 @@ eval_agg <- function(expr, data) {
   arg <- expr[[1]]
   values <- if (identical(op, "$sum") && identical(arg, 1L)) {
     rep(1L, nrow(data))
+  } else if (identical(op, "$push") && identical(arg, "$$ROOT")) {
+    lapply(seq_len(nrow(data)), function(i) as.list(data[i, , drop = FALSE]))
   } else {
     eval_expr(arg, data)
   }
@@ -332,6 +419,7 @@ eval_agg <- function(expr, data) {
     `$avg` = mean(values, na.rm = TRUE),
     `$min` = min(values, na.rm = TRUE),
     `$max` = max(values, na.rm = TRUE),
+    `$push` = values,
     stop("Unsupported aggregate in test executor: ", op, call. = FALSE)
   )
 }

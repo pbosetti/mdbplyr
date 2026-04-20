@@ -194,6 +194,15 @@ starwars_tbl |>
   collect()
 ```
 
+## `slice_tail()`
+
+```{r verb-slice-tail, eval = FALSE}
+starwars_tbl |>
+  select(name, species) |>
+  slice_tail(n = 5) |>
+  collect()
+```
+
 ## `head()`
 
 ```{r verb-head, eval = FALSE}

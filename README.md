@@ -49,6 +49,7 @@ devtools::install_github("pbosetti/mdbplyr", build_vignettes=TRUE)
 - `group_by()`
 - `summarise()`
 - `slice_head()`
+- `slice_tail()`
 - `head()`
 
 ### Supported expressions
@@ -195,9 +196,9 @@ Typical verb mappings are:
 - `mutate()` -> `$addFields` or `$project`
 - `arrange()` -> `$sort`
 - `group_by()` + `summarise()` -> `$group`
-- `slice_head()` / `head()` -> `$limit`
+- `slice_head()` / `head()` -> `$limit` or array-slicing stages for negative `n`
+- `slice_tail()` -> array-slicing stages
 
 This mapping should be documented, inspectable, and testable.
 
 ---
-
