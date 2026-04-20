@@ -22,8 +22,8 @@ The package is intentionally conservative:
 The package is still in its initial development phase. While it is under testing and not available on CRAN, you can install it with:
 
 ```R
-install.package("pak")
-pak::pak("pbosetti/mdbplyr")
+install.package("devtools")
+devtools::install_github("pbosetti/mdbplyr", build_vignettes=TRUE)
 ```
 
 ## Current implemented subset
