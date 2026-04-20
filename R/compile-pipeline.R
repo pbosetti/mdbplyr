@@ -47,8 +47,10 @@ compile_pipeline <- function(x) {
     stages[[length(stages) + 1]] <- list(`$sort` = lapply(ir$order, as.integer))
   }
 
-  if (!is.null(ir$slice)) {
-    stages <- c(stages, compile_slice_stages(ir$slice))
+  if (length(ir$slices) > 0) {
+    for (slice in ir$slices) {
+      stages <- c(stages, compile_slice_stages(slice))
+    }
   }
 
   if (length(ir$manual_stages) > 0) {

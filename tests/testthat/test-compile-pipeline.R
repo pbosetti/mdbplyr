@@ -64,3 +64,19 @@ test_that("negative slice_head compiles through array slicing stages", {
     ))
   )
 })
+
+test_that("slice_head and slice_tail compose in call order", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:10)) |>
+    dplyr::slice_head(n = 6) |>
+    dplyr::slice_tail(n = 2)
+
+  pipeline <- compile_pipeline(tbl)
+  stage_names <- vapply(pipeline, names, character(1))
+
+  expect_equal(stage_names, c("$limit", "$group", "$project", "$unwind", "$replaceRoot"))
+  expect_equal(pipeline[[1]], list(`$limit` = 6L))
+  expect_equal(
+    pipeline[[3]]$`$project`$`__mdbplyr_slice_docs__`,
+    list(`$slice` = list("$__mdbplyr_slice_docs__", -2L))
+  )
+})

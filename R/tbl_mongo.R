@@ -32,7 +32,7 @@ tbl_mongo <- function(collection, name = NULL, schema = NULL, executor = NULL) {
     groups = character(),
     summaries = list(),
     order = list(),
-    slice = NULL,
+    slices = list(),
     manual_stages = list()
   )
 
@@ -71,14 +71,19 @@ print.tbl_mongo <- function(x, ...) {
 ")
   cat("  Summaries:", if (length(x$ir$summaries)) paste(names(x$ir$summaries), collapse = ", ") else "<none>", "
 ")
-  slice_label <- if (is.null(x$ir$slice)) {
+  slice_label <- if (length(x$ir$slices) == 0) {
     "<none>"
   } else {
-    paste0(x$ir$slice$verb, "(", x$ir$slice$n, ")")
+    paste(vapply(x$ir$slices, format_slice_label, character(1)), collapse = " -> ")
   }
   cat("  Slice:", slice_label, "
 ")
   cat("  Manual stages:", length(x$ir$manual_stages), "
 ")
   invisible(x)
+}
+
+#' @keywords internal
+format_slice_label <- function(slice) {
+  paste0(slice$verb, "(", slice$n, ")")
 }

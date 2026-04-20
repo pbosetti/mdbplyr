@@ -140,3 +140,25 @@ test_that("slice_tail defaults to one row like dplyr", {
 
   expect_equal(result$x, 5L)
 })
+
+test_that("slice_head then slice_tail applies sequentially", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:10))
+
+  result <- tbl |>
+    dplyr::slice_head(n = 6) |>
+    dplyr::slice_tail(n = 2) |>
+    collect()
+
+  expect_equal(result$x, c(5L, 6L))
+})
+
+test_that("slice_tail then slice_head applies sequentially", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:10))
+
+  result <- tbl |>
+    dplyr::slice_tail(n = 6) |>
+    dplyr::slice_head(n = 2) |>
+    collect()
+
+  expect_equal(result$x, c(5L, 6L))
+})

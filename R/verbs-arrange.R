@@ -67,7 +67,7 @@ slice_head.tbl_mongo <- function(.data, ..., n = NULL, prop = NULL, by = NULL) {
   if (!is.null(prop) || !is.null(by) || dots_n(...) > 0) {
     abort_unsupported("slice_head()", NULL, "Only slice_head(n = ...) is supported.")
   }
-  update_ir(.data, slice = validate_slice_n(n, default_n = 1L, verb = "head", context = "slice_head()"))
+  append_slice(.data, validate_slice_n(n, default_n = 1L, verb = "head", context = "slice_head()"))
 }
 
 #' @rdname mongo_slice_head
@@ -76,7 +76,7 @@ slice_tail.tbl_mongo <- function(.data, ..., n = NULL, prop = NULL, by = NULL) {
   if (!is.null(prop) || !is.null(by) || dots_n(...) > 0) {
     abort_unsupported("slice_tail()", NULL, "Only slice_tail(n = ...) is supported.")
   }
-  update_ir(.data, slice = validate_slice_n(n, default_n = 1L, verb = "tail", context = "slice_tail()"))
+  append_slice(.data, validate_slice_n(n, default_n = 1L, verb = "tail", context = "slice_tail()"))
 }
 
 #' @keywords internal
@@ -97,10 +97,15 @@ validate_slice_n <- function(n, default_n, verb, context) {
   list(verb = verb, n = as.integer(n))
 }
 
+#' @keywords internal
+append_slice <- function(.data, slice) {
+  update_ir(.data, slices = c(.data$ir$slices, list(slice)))
+}
+
 #' @importFrom utils head
 #' @param x A `tbl_mongo` object.
 #' @rdname mongo_slice_head
 #' @export
 head.tbl_mongo <- function(x, n = 6L, ...) {
-  update_ir(x, slice = validate_slice_n(n, default_n = 6L, verb = "head", context = "head()"))
+  append_slice(x, validate_slice_n(n, default_n = 6L, verb = "head", context = "head()"))
 }
