@@ -33,6 +33,7 @@ tbl_mongo <- function(collection, name = NULL, schema = NULL, executor = NULL) {
     summaries = list(),
     order = list(),
     slices = list(),
+    row_ops = list(),
     manual_stages = list()
   )
 

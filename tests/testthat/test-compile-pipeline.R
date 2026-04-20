@@ -80,3 +80,27 @@ test_that("slice_head and slice_tail compose in call order", {
     list(`$slice` = list("$__mdbplyr_slice_docs__", -2L))
   )
 })
+
+test_that("mutate sequence compiles as a row-order operation", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:3)) |>
+    dplyr::mutate(i = 1:n())
+
+  pipeline <- compile_pipeline(tbl)
+  stage_names <- vapply(pipeline, names, character(1))
+
+  expect_equal(stage_names, c("$group", "$unwind", "$replaceRoot"))
+  expect_equal(pipeline[[2]]$`$unwind`$includeArrayIndex, "__mdbplyr_seq_idx__")
+})
+
+test_that("mutate sequence preserves call order relative to arrange", {
+  before_arrange <- mock_tbl(tibble::tibble(x = 1:3)) |>
+    dplyr::mutate(i = 1:n()) |>
+    dplyr::arrange(dplyr::desc(x))
+
+  after_arrange <- mock_tbl(tibble::tibble(x = 1:3)) |>
+    dplyr::arrange(dplyr::desc(x)) |>
+    dplyr::mutate(i = 1:n())
+
+  expect_equal(vapply(compile_pipeline(before_arrange), names, character(1))[1:4], c("$group", "$unwind", "$replaceRoot", "$sort"))
+  expect_equal(vapply(compile_pipeline(after_arrange), names, character(1))[1:4], c("$sort", "$group", "$unwind", "$replaceRoot"))
+})

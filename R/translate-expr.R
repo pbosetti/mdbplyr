@@ -284,6 +284,28 @@ translate_expr <- function(expr, context = "scalar") {
 }
 
 #' @keywords internal
+is_mutate_sequence_expr <- function(expr) {
+  if (rlang::is_quosure(expr)) {
+    expr <- rlang::get_expr(expr)
+  }
+
+  if (!rlang::is_call(expr, ":")) {
+    return(FALSE)
+  }
+
+  args <- rlang::call_args(expr)
+  if (length(args) != 2L) {
+    return(FALSE)
+  }
+
+  is_scalar_literal(args[[1]]) &&
+    is.numeric(args[[1]]) &&
+    identical(as.numeric(args[[1]]), 1) &&
+    rlang::is_call(args[[2]], "n") &&
+    length(rlang::call_args(args[[2]])) == 0L
+}
+
+#' @keywords internal
 compile_mongo_args <- function(args) {
   unname(lapply(args, compile_mongo_expr))
 }

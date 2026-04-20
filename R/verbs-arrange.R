@@ -38,7 +38,11 @@ arrange.tbl_mongo <- function(.data, ..., .by_group = FALSE) {
     order[[rlang::as_string(expr)]] <- direction
   }
 
-  update_ir(.data, order = order)
+  update_ir(
+    .data,
+    order = order,
+    row_ops = c(.data$ir$row_ops, list(list(type = "sort", order = order)))
+  )
 }
 
 #' Slice a lazy Mongo query
@@ -99,7 +103,11 @@ validate_slice_n <- function(n, default_n, verb, context) {
 
 #' @keywords internal
 append_slice <- function(.data, slice) {
-  update_ir(.data, slices = c(.data$ir$slices, list(slice)))
+  update_ir(
+    .data,
+    slices = c(.data$ir$slices, list(slice)),
+    row_ops = c(.data$ir$row_ops, list(list(type = "slice", slice = slice)))
+  )
 }
 
 #' @importFrom utils head

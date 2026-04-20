@@ -43,13 +43,19 @@ compile_pipeline <- function(x) {
     stages[[length(stages) + 1]] <- list(`$project` = compile_summary_projection(ir))
   }
 
-  if (length(ir$order) > 0) {
-    stages[[length(stages) + 1]] <- list(`$sort` = lapply(ir$order, as.integer))
-  }
+  if (length(ir$row_ops) > 0) {
+    for (row_op in ir$row_ops) {
+      stages <- c(stages, compile_row_op_stages(row_op))
+    }
+  } else {
+    if (length(ir$order) > 0) {
+      stages[[length(stages) + 1]] <- list(`$sort` = lapply(ir$order, as.integer))
+    }
 
-  if (length(ir$slices) > 0) {
-    for (slice in ir$slices) {
-      stages <- c(stages, compile_slice_stages(slice))
+    if (length(ir$slices) > 0) {
+      for (slice in ir$slices) {
+        stages <- c(stages, compile_slice_stages(slice))
+      }
     }
   }
 
@@ -58,6 +64,17 @@ compile_pipeline <- function(x) {
   }
 
   stages
+}
+
+#' @keywords internal
+compile_row_op_stages <- function(row_op) {
+  switch(
+    row_op$type,
+    sort = list(list(`$sort` = lapply(row_op$order, as.integer))),
+    slice = compile_slice_stages(row_op$slice),
+    sequence = compile_sequence_stages(row_op$fields, row_op$groups),
+    abort_invalid("compile_pipeline()", paste("cannot compile row op", row_op$type))
+  )
 }
 
 #' @keywords internal
@@ -102,6 +119,64 @@ compile_slice_expr <- function(slice, docs_ref) {
   }
 
   list(`$slice` = list(docs_ref, drop_n, remaining))
+}
+
+#' @keywords internal
+compile_sequence_stages <- function(fields, groups) {
+  docs_field <- "__mdbplyr_seq_docs__"
+  idx_field <- "__mdbplyr_seq_idx__"
+  global_idx_field <- "__mdbplyr_seq_global_idx__"
+
+  if (length(groups) == 0L) {
+    return(list(
+      list(`$group` = stats::setNames(
+        list(NULL, list(`$push` = "$$ROOT")),
+        c("_id", docs_field)
+      )),
+      list(`$unwind` = list(path = paste0("$", docs_field), includeArrayIndex = idx_field)),
+      list(`$replaceRoot` = list(
+        newRoot = list(`$mergeObjects` = list(
+          paste0("$", docs_field),
+          compile_sequence_field_object(fields, idx_field)
+        ))
+      ))
+    ))
+  }
+
+  list(
+    list(`$group` = stats::setNames(
+      list(NULL, list(`$push` = "$$ROOT")),
+      c("_id", docs_field)
+    )),
+    list(`$unwind` = list(path = paste0("$", docs_field), includeArrayIndex = idx_field)),
+    list(`$replaceRoot` = list(
+      newRoot = list(`$mergeObjects` = list(
+        paste0("$", docs_field),
+        stats::setNames(list(field_reference(idx_field)), global_idx_field)
+      ))
+    )),
+    list(`$group` = c(
+      list(`_id` = stats::setNames(lapply(groups, field_reference), groups)),
+      stats::setNames(list(list(`$push` = "$$ROOT")), docs_field)
+    )),
+    list(`$unwind` = list(path = paste0("$", docs_field), includeArrayIndex = idx_field)),
+    list(`$replaceRoot` = list(
+      newRoot = list(`$mergeObjects` = list(
+        paste0("$", docs_field),
+        compile_sequence_field_object(fields, idx_field)
+      ))
+    )),
+    list(`$sort` = stats::setNames(list(1L), global_idx_field)),
+    list(`$project` = stats::setNames(list(0L), global_idx_field))
+  )
+}
+
+#' @keywords internal
+compile_sequence_field_object <- function(fields, idx_field) {
+  stats::setNames(
+    rep(list(list(`$add` = list(field_reference(idx_field), 1L))), length(fields)),
+    fields
+  )
 }
 
 #' @keywords internal

@@ -162,3 +162,58 @@ test_that("slice_tail then slice_head applies sequentially", {
 
   expect_equal(result$x, c(5L, 6L))
 })
+
+test_that("mutate supports 1:n() in current row order", {
+  tbl <- mock_tbl(tibble::tibble(x = c(10, 20, 30)))
+
+  result <- tbl |>
+    dplyr::mutate(i = 1:n()) |>
+    collect()
+
+  expect_equal(result$i, c(1L, 2L, 3L))
+})
+
+test_that("mutate 1:n() respects arrange call order", {
+  tbl <- mock_tbl(tibble::tibble(x = c(10, 20, 30)))
+
+  before_arrange <- tbl |>
+    dplyr::mutate(i = 1:n()) |>
+    dplyr::arrange(dplyr::desc(x)) |>
+    collect()
+
+  after_arrange <- tbl |>
+    dplyr::arrange(dplyr::desc(x)) |>
+    dplyr::mutate(i = 1:n()) |>
+    collect()
+
+  expect_equal(before_arrange$i, c(3L, 2L, 1L))
+  expect_equal(after_arrange$i, c(1L, 2L, 3L))
+})
+
+test_that("mutate 1:n() respects slice call order", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:5))
+
+  before_slice <- tbl |>
+    dplyr::mutate(i = 1:n()) |>
+    dplyr::slice_tail(n = 2) |>
+    collect()
+
+  after_slice <- tbl |>
+    dplyr::slice_tail(n = 2) |>
+    dplyr::mutate(i = 1:n()) |>
+    collect()
+
+  expect_equal(before_slice$i, c(4L, 5L))
+  expect_equal(after_slice$i, c(1L, 2L))
+})
+
+test_that("grouped mutate supports 1:n()", {
+  tbl <- mock_tbl(tibble::tibble(g = c("b", "a", "b", "a"), x = 1:4))
+
+  result <- tbl |>
+    dplyr::group_by(g) |>
+    dplyr::mutate(i = 1:n()) |>
+    collect()
+
+  expect_equal(result$i, c(1L, 1L, 2L, 2L))
+})

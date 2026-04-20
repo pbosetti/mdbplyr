@@ -215,7 +215,7 @@ head(starwars_tbl, 5) |>
 The examples above stay within the currently supported subset:
 
 - explicit field references,
-- scalar expressions for `mutate()` and `transmute()`,
+- scalar expressions for `mutate()` and `transmute()`, plus the special `1:n()` row-numbering case,
 - conservative grouped summaries,
 - no joins, window functions, or automatic client-side fallback.
 

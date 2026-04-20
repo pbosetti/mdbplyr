@@ -96,6 +96,8 @@ run_pipeline <- function(data, pipeline) {
       `$group` = apply_group(result, spec),
       `$sort` = apply_sort(result, spec),
       `$limit` = tibble::as_tibble(utils::head(result, spec)),
+      `$unwind` = apply_unwind(result, spec),
+      `$replaceRoot` = apply_replace_root(result, spec),
       stop("Unsupported stage in test executor: ", op, call. = FALSE)
     )
   }
@@ -116,6 +118,12 @@ apply_add_fields <- function(data, spec) {
 }
 
 apply_project <- function(data, spec) {
+  non_id <- spec[names(spec) != "_id"]
+  if (length(non_id) > 0L && all(vapply(non_id, identical, logical(1L), 0L))) {
+    keep <- setdiff(names(data), names(non_id))
+    return(tibble::as_tibble(data[, keep, drop = FALSE]))
+  }
+
   out <- list()
   for (name in names(spec)) {
     expr <- spec[[name]]
@@ -171,6 +179,98 @@ apply_sort <- function(data, spec) {
     if (identical(spec[[name]], -1L)) dplyr::desc(value) else value
   })
   tibble::as_tibble(data[do.call(order, order_vecs), , drop = FALSE])
+}
+
+apply_unwind <- function(data, spec) {
+  if (is.character(spec)) {
+    path <- spec
+    index_name <- NULL
+  } else {
+    path <- spec$path
+    index_name <- spec$includeArrayIndex
+  }
+
+  field_name <- if (startsWith(path, "$")) substring(path, 2L) else path
+  col <- data[[field_name]]
+  other_cols <- setdiff(names(data), field_name)
+  result_rows <- list()
+
+  for (i in seq_len(nrow(data))) {
+    arr <- col[[i]]
+    base <- as.list(data[i, other_cols, drop = FALSE])
+
+    if (is.data.frame(arr)) {
+      for (j in seq_len(nrow(arr))) {
+        new_row <- base
+        new_row[[field_name]] <- list(as.list(arr[j, , drop = FALSE]))
+        if (!is.null(index_name)) {
+          new_row[[index_name]] <- j - 1L
+        }
+        result_rows[[length(result_rows) + 1L]] <- tibble::as_tibble(new_row)
+      }
+    } else if (is.list(arr)) {
+      for (j in seq_along(arr)) {
+        new_row <- base
+        new_row[[field_name]] <- list(arr[[j]])
+        if (!is.null(index_name)) {
+          new_row[[index_name]] <- j - 1L
+        }
+        result_rows[[length(result_rows) + 1L]] <- tibble::as_tibble(new_row)
+      }
+    } else {
+      new_row <- base
+      new_row[[field_name]] <- arr
+      if (!is.null(index_name)) {
+        new_row[[index_name]] <- 0L
+      }
+      result_rows[[length(result_rows) + 1L]] <- tibble::as_tibble(new_row)
+    }
+  }
+
+  if (length(result_rows) == 0L) {
+    return(data[0L, , drop = FALSE])
+  }
+
+  dplyr::bind_rows(result_rows)
+}
+
+apply_replace_root <- function(data, spec) {
+  new_root_spec <- spec$newRoot
+  if (!is.list(new_root_spec) || !("$mergeObjects" %in% names(new_root_spec))) {
+    stop("$replaceRoot: only $mergeObjects is supported in the test mock.", call. = FALSE)
+  }
+
+  merge_args <- new_root_spec$`$mergeObjects`
+  result_rows <- lapply(seq_len(nrow(data)), function(i) {
+    row <- data[i, , drop = FALSE]
+    merged <- list()
+
+    for (arg in merge_args) {
+      contribution <- if (is.character(arg) && length(arg) == 1L && startsWith(arg, "$")) {
+        field_name <- substring(arg, 2L)
+        value <- row[[field_name]]
+        if (is.list(value) && length(value) == 1L) {
+          value <- value[[1L]]
+        }
+        if (is.list(value)) value else NULL
+      } else if (is.list(arg) && length(names(arg)) > 0L && all(nzchar(names(arg)))) {
+        lapply(arg, function(expr) {
+          value <- eval_expr(expr, row)
+          if (length(value) == 1L) value[[1L]] else value
+        })
+      } else {
+        NULL
+      }
+
+      if (!is.null(contribution) && is.list(contribution)) {
+        merged <- utils::modifyList(merged, contribution)
+      }
+    }
+
+    tibble::as_tibble(merged)
+  })
+
+  dplyr::bind_rows(result_rows)
 }
 
 eval_expr <- function(expr, data) {

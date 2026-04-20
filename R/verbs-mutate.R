@@ -36,10 +36,20 @@ mutate.tbl_mongo <- function(.data, ...) {
     abort_invalid("mutate()", "requires named expressions.")
   }
 
-  translated <- lapply(quos, translate_expr, context = "mutate()")
-  names(translated) <- names_in
+  is_sequence <- vapply(quos, is_mutate_sequence_expr, logical(1))
+  translated <- lapply(quos[!is_sequence], translate_expr, context = "mutate()")
+  names(translated) <- names_in[!is_sequence]
   projection <- append_projection_fields(.data$ir$projection, names_in)
-  update_ir(.data, computed = c(.data$ir$computed, translated), projection = projection)
+  row_ops <- .data$ir$row_ops
+  if (any(is_sequence)) {
+    row_ops <- c(row_ops, list(list(
+      type = "sequence",
+      fields = names_in[is_sequence],
+      groups = .data$ir$groups
+    )))
+  }
+
+  update_ir(.data, computed = c(.data$ir$computed, translated), projection = projection, row_ops = row_ops)
 }
 
 #' Compute and keep only derived fields
@@ -69,8 +79,18 @@ transmute.tbl_mongo <- function(.data, ...) {
     abort_invalid("transmute()", "requires named expressions.")
   }
 
-  translated <- lapply(quos, translate_expr, context = "transmute()")
-  names(translated) <- names_in
+  is_sequence <- vapply(quos, is_mutate_sequence_expr, logical(1))
+  translated <- lapply(quos[!is_sequence], translate_expr, context = "transmute()")
+  names(translated) <- names_in[!is_sequence]
   projection <- stats::setNames(names_in, names_in)
-  update_ir(.data, computed = translated, projection = projection)
+  row_ops <- .data$ir$row_ops
+  if (any(is_sequence)) {
+    row_ops <- c(row_ops, list(list(
+      type = "sequence",
+      fields = names_in[is_sequence],
+      groups = .data$ir$groups
+    )))
+  }
+
+  update_ir(.data, computed = translated, projection = projection, row_ops = row_ops)
 }

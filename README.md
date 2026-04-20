@@ -67,12 +67,13 @@ devtools::install_github("pbosetti/mdbplyr", build_vignettes=TRUE)
 - `if_else()`,
 - `case_when()`,
 - `is.na()`,
+- `1:n()` in `mutate()` / `transmute()` for row numbering,
 - `n()`, `sum()`, `mean()`, `min()`, `max()`.
 
 ### Current limits
 
 - `select()` and `rename()` currently support only explicit bare field names,
-- `mutate()` and `transmute()` require named expressions,
+- `mutate()` and `transmute()` require named expressions and otherwise support scalar expressions except for the special `1:n()` row-numbering case,
 - `group_by()` supports bare field names only,
 - `summarise()` supports only the documented aggregate functions,
 - joins, window functions, `across()`, reshaping, and write operations are out of scope.
