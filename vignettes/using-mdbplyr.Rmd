@@ -74,10 +74,45 @@ starwars_collection <- mongolite::mongo(
   db = "mdbplyr"
 )
 
+starwars_tbl <- tbl_mongo(starwars_collection) %>% 
+  infer_schema()
+```
+
+## Schema
+
+`mdbplyr` uses a schema to know which fields are available in a collection.
+This matters especially for:
+
+- dotted paths in nested documents such as `` `message.timestamp` `` or `` `message.measurements.Fx` ``;
+- schema-first expression translation in verbs such as `filter()`, `mutate()`, and `summarise()`;
+- explicit operations on nested data such as `select()`, `flatten_fields()`, and `unwind_array()`.
+
+The most reliable approach is to pass `schema = ...` explicitly when creating
+the lazy table:
+
+```{r schema-explicit, eval = FALSE}
 starwars_tbl <- tbl_mongo(
   starwars_collection,
-  schema = names(dplyr::starwars)
+  schema = c("name", "species", "height", "mass", "homeworld")
 )
+```
+
+When writing the schema by hand is inconvenient, `infer_schema()` can populate
+it from the first document in the collection:
+
+```{r schema-infer, eval = FALSE}
+starwars_tbl <- tbl_mongo(starwars_collection) |>
+  infer_schema()
+```
+
+This is convenient for exploratory work, but it has an important limitation:
+it only sees one document. If the collection is heterogeneous, fields that do
+not appear in the first document may still need to be added manually.
+
+You can inspect the currently known fields with:
+
+```{r schema-fields, eval = FALSE}
+schema_fields(starwars_tbl)
 ```
 
 ## Basic inspection
@@ -126,6 +161,15 @@ starwars_tbl |>
 ```{r verb-select, eval = FALSE}
 starwars_tbl |>
   select(name, species, homeworld) |>
+  collect()
+```
+
+Selecting dotted paths preserves nested MongoDB structure by default. It does
+not flatten nested fields unless you explicitly ask for that:
+
+```{r verb-select-nested, eval = FALSE}
+sensor_tbl |>
+  select(`message.timestamp`, `message.measurements`) |>
   collect()
 ```
 
@@ -210,13 +254,61 @@ head(starwars_tbl, 5) |>
   collect()
 ```
 
+## `flatten_fields()`
+
+Use `flatten_fields()` when you explicitly want nested object leaves to become
+flat tibble columns. By default the output names are the schema dot paths.
+
+```{r verb-flatten-fields, eval = FALSE}
+sensor_tbl |>
+  select(`message.timestamp`, `message.measurements`) |>
+  flatten_fields() |>
+  collect()
+```
+
+You can also target a specific nested root and optionally rename the flattened
+output columns:
+
+```{r verb-flatten-fields-names, eval = FALSE}
+sensor_tbl |>
+  flatten_fields(
+    `message.measurements`,
+    names_fn = function(x) gsub(".", "_", x, fixed = TRUE)
+  ) |>
+  collect()
+```
+
+## `unwind_array()`
+
+Use `unwind_array()` when a document field contains an array and you want one
+output row per array element.
+
+```{r verb-unwind-array, eval = FALSE}
+orders_tbl |>
+  unwind_array(items) |>
+  collect()
+```
+
+If array elements are nested objects, `unwind_array()` and `flatten_fields()`
+can be chained:
+
+```{r verb-unwind-array-flatten, eval = FALSE}
+orders_tbl |>
+  unwind_array(items) |>
+  flatten_fields(items) |>
+  collect()
+```
+
 # Notes
 
 The examples above stay within the currently supported subset:
 
 - explicit field references,
+- schema-first expression resolution, with `.data$...` for explicit field references and `.env$...` for local values,
 - scalar expressions for `mutate()` and `transmute()`, plus the special `1:n()` row-numbering case,
 - conservative grouped summaries,
+- explicit flattening of nested object fields with `flatten_fields()`,
+- array row expansion with `unwind_array()`,
 - no joins, window functions, or automatic client-side fallback.
 
 If a query falls outside that subset, `mdbplyr` is designed to fail
