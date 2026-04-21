@@ -3,7 +3,7 @@ It provides a subset of dplyr verbs that translate into MongoDB aggregation
 stages, allowing users to compose lazy queries against MongoDB collections using 
 tidy evaluation.
 
-Second submission: fixed notes in first one
+Third submission: fixed unquoted `dplyr` in DESCRIPTION, added several fixes and new features.
 
 ## R CMD check results
 
