@@ -236,6 +236,15 @@ apply_unwind <- function(data, spec) {
 
 apply_replace_root <- function(data, spec) {
   new_root_spec <- spec$newRoot
+  if (is.character(new_root_spec) && length(new_root_spec) == 1L && startsWith(new_root_spec, "$")) {
+    field_name <- substring(new_root_spec, 2L)
+    result_rows <- lapply(seq_len(nrow(data)), function(i) {
+      value <- data[[field_name]][[i]]
+      tibble::as_tibble(value)
+    })
+    return(dplyr::bind_rows(result_rows))
+  }
+
   if (!is.list(new_root_spec) || !("$mergeObjects" %in% names(new_root_spec))) {
     stop("$replaceRoot: only $mergeObjects is supported in the test mock.", call. = FALSE)
   }
