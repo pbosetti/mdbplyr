@@ -21,6 +21,18 @@ A \code{tbl_mongo} object.
 \description{
 Create a lazy MongoDB table
 }
+\details{
+Supplying \code{schema = ...} is the most reliable way to make field references
+explicit, especially for dotted paths in nested documents. If you do not want
+to write the schema manually, \code{\link[=infer_schema]{infer_schema()}} can populate it from the first
+document in the collection:
+
+\code{tbl_mongo(collection) |> infer_schema()}
+
+This is convenient, but it only reflects one document. If the collection is
+heterogeneous, fields that do not appear in the first document may still need
+to be added manually.
+}
 \examples{
 tbl <- tbl_mongo(
   list(name = "orders"),

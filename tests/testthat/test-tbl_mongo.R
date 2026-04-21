@@ -114,3 +114,32 @@ test_that("append_stage validates raw JSON stage input", {
   expect_error(append_stage(tbl, "{\"x\": 1}"), "operator key starting with '\\$'")
   expect_error(append_stage(tbl, "[{\"$match\":{\"x\":1}}]"), "requires a single MongoDB stage object")
 })
+
+test_that("infer_schema updates a tbl_mongo from the first source document", {
+  collection <- mock_collection(tibble::tibble(
+    id = 1:2,
+    message = list(
+      list(timestamp = 1, measurements = list(Fx = 1, Fy = 2)),
+      list(timestamp = 2, measurements = list(Fx = 3, Fy = 4))
+    )
+  ))
+  collection$data <- NULL
+
+  tbl <- tbl_mongo(collection)
+  inferred <- infer_schema(tbl)
+
+  expect_equal(
+    schema_fields(inferred),
+    c("id", "message.timestamp", "message.measurements.Fx", "message.measurements.Fy")
+  )
+  expect_equal(inferred$src$schema, schema_fields(inferred))
+})
+
+test_that("infer_schema fails for empty collections", {
+  collection <- mock_collection(tibble::tibble(x = numeric()))
+  collection$data <- NULL
+
+  tbl <- tbl_mongo(collection)
+
+  expect_error(infer_schema(tbl), "empty collection")
+})
