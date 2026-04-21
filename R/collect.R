@@ -24,8 +24,23 @@ collect <- function(x, ...) {
 collect.tbl_mongo <- function(x, ...) {
   pipeline <- compile_pipeline(x)
   result <- x$src$executor(pipeline, ...)
-  if (inherits(result, "tbl_df")) {
-    return(result)
+  out <- if (inherits(result, "tbl_df")) result else tibble::as_tibble(result)
+  postprocess_collect(out, x$ir$collect_map)
+}
+
+#' @keywords internal
+postprocess_collect <- function(data, collect_map) {
+  if (is.null(collect_map) || !length(collect_map)) {
+    return(tibble::as_tibble(data))
   }
-  tibble::as_tibble(result)
+
+  internal_names <- unname(collect_map)
+  present <- internal_names %in% names(data)
+  if (!any(present)) {
+    return(tibble::as_tibble(data))
+  }
+
+  out <- tibble::as_tibble(data[, internal_names[present], drop = FALSE])
+  names(out) <- names(collect_map)[present]
+  out
 }

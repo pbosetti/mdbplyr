@@ -34,6 +34,32 @@ field_reference <- function(name) {
 }
 
 #' @keywords internal
+is_safe_output_name <- function(name) {
+  is.character(name) &&
+    length(name) == 1L &&
+    nzchar(name) &&
+    !grepl("\\.", name) &&
+    !startsWith(name, "$")
+}
+
+#' @keywords internal
+allocate_output_name <- function(used = character(), prefix = "__mdbplyr_col_") {
+  i <- 1L
+  repeat {
+    candidate <- paste0(prefix, i)
+    if (!candidate %in% used) {
+      return(candidate)
+    }
+    i <- i + 1L
+  }
+}
+
+#' @keywords internal
+invert_name_map <- function(x) {
+  stats::setNames(names(x), unname(x))
+}
+
+#' @keywords internal
 format_mongo_datetime <- function(x) {
   format(as.POSIXct(x, tz = "UTC"), "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC")
 }

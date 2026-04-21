@@ -143,3 +143,35 @@ test_that("infer_schema fails for empty collections", {
 
   expect_error(infer_schema(tbl), "empty collection")
 })
+
+test_that("flatten_fields fails when nested schema is missing", {
+  collection <- mock_collection(tibble::tibble(
+    id = 1,
+    message = list(list(value = 1))
+  ))
+
+  tbl <- tbl_mongo(collection)
+
+  expect_error(flatten_fields(tbl), "Supply schema")
+})
+
+test_that("flatten_fields validates names_fn output", {
+  collection <- mock_collection(tibble::tibble(
+    id = 1,
+    message = list(list(left = 1, right = 2))
+  ))
+
+  tbl <- tbl_mongo(collection) |>
+    infer_schema()
+
+  expect_error(
+    flatten_fields(tbl, names_fn = function(x) rep("dup", length(x))),
+    "unique output names"
+  )
+})
+
+test_that("unwind_array fails for unknown fields", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:2))
+
+  expect_error(unwind_array(tbl, items), "unknown field")
+})

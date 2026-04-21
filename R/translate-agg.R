@@ -1,9 +1,13 @@
 #' @keywords internal
-translate_agg <- function(expr, fields = NULL) {
+translate_agg <- function(expr, fields = NULL, field_map = NULL) {
   env <- NULL
   if (rlang::is_quosure(expr)) {
     env <- rlang::quo_get_env(expr)
     expr <- rlang::get_expr(expr)
+  }
+
+  if (is.null(field_map) && !is.null(fields)) {
+    field_map <- stats::setNames(fields, fields)
   }
 
   if (!rlang::is_call(expr)) {
@@ -43,7 +47,7 @@ translate_agg <- function(expr, fields = NULL) {
   list(
     type = "agg",
     fn = fn,
-    arg = translate_expr(args[[1]], context = "aggregate", env = env, fields = fields),
+    arg = translate_expr(args[[1]], context = "aggregate", env = env, field_map = field_map),
     na_rm = na_rm
   )
 }

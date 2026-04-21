@@ -46,6 +46,10 @@ filter.tbl_mongo <- function(.data, ..., .by = NULL, .preserve = FALSE) {
   }
 
   predicates <- rlang::enquos(...)
-  translated <- lapply(predicates, translate_predicate, fields = schema_fields(.data))
-  update_ir(.data, filters = c(.data$ir$filters, translated))
+  translated <- lapply(predicates, translate_predicate, field_map = projection_mapping(.data))
+  update_ir(
+    .data,
+    filters = c(.data$ir$filters, translated),
+    ops = c(.data$ir$ops, list(list(type = "filter", predicates = translated)))
+  )
 }

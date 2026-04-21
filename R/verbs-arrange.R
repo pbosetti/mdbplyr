@@ -17,11 +17,12 @@
 #' @export
 arrange.tbl_mongo <- function(.data, ..., .by_group = FALSE) {
   quos <- rlang::enquos(...)
+  current_map <- projection_mapping(.data)
   order <- list()
 
   if (isTRUE(.by_group) && length(.data$ir$groups) > 0) {
     for (group in .data$ir$groups) {
-      order[[group]] <- 1L
+      order[[resolve_field_sources(group, current_map)]] <- 1L
     }
   }
 
@@ -35,13 +36,15 @@ arrange.tbl_mongo <- function(.data, ..., .by_group = FALSE) {
     if (!rlang::is_symbol(expr)) {
       abort_unsupported("arrange()", expr, "Only bare field names and desc(field) are supported.")
     }
-    order[[rlang::as_string(expr)]] <- direction
+    name <- rlang::as_string(expr)
+    order[[resolve_field_sources(name, current_map)]] <- direction
   }
 
   update_ir(
     .data,
     order = order,
-    row_ops = c(.data$ir$row_ops, list(list(type = "sort", order = order)))
+    row_ops = c(.data$ir$row_ops, list(list(type = "sort", order = order))),
+    ops = c(.data$ir$ops, list(list(type = "sort", order = order)))
   )
 }
 
@@ -106,7 +109,8 @@ append_slice <- function(.data, slice) {
   update_ir(
     .data,
     slices = c(.data$ir$slices, list(slice)),
-    row_ops = c(.data$ir$row_ops, list(list(type = "slice", slice = slice)))
+    row_ops = c(.data$ir$row_ops, list(list(type = "slice", slice = slice))),
+    ops = c(.data$ir$ops, list(list(type = "slice", slice = slice)))
   )
 }
 

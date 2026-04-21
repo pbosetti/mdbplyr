@@ -71,7 +71,25 @@ summarise.tbl_mongo <- function(.data, ..., .by = NULL, .groups = NULL) {
 
   names_in <- rlang::names2(quos)
   names_in[names_in == ""] <- vapply(quos[names_in == ""], expr_text, character(1))
-  translated <- lapply(quos, translate_agg, fields = schema_fields(.data))
-  names(translated) <- names_in
-  update_ir(.data, summaries = translated)
+  current_map <- projection_mapping(.data)
+  translated <- lapply(quos, translate_agg, field_map = current_map)
+
+  shape <- append_field_map(character(), c(.data$ir$groups, names_in))
+  group_output <- shape$field_map[.data$ir$groups]
+  summary_output <- shape$field_map[names_in]
+  names(translated) <- unname(summary_output)
+
+  update_ir(
+    .data,
+    summaries = translated,
+    projection = stats::setNames(unname(c(group_output, summary_output)), unname(c(group_output, summary_output))),
+    field_map = as_named_character(c(group_output, summary_output)),
+    collect_map = as_named_character(c(group_output, summary_output)),
+    ops = c(.data$ir$ops, list(list(
+      type = "summarise",
+      groups = .data$ir$groups,
+      group_sources = stats::setNames(resolve_field_sources(.data$ir$groups, current_map), .data$ir$groups),
+      summaries = translated
+    )))
+  )
 }

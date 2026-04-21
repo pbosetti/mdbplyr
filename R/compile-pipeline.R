@@ -21,6 +21,16 @@ compile_pipeline <- function(x) {
   ir <- x$ir
   stages <- list()
 
+  if (length(ir$ops) > 0) {
+    for (op in ir$ops) {
+      stages <- c(stages, compile_ir_op(op))
+    }
+    if (length(ir$manual_stages) > 0) {
+      stages <- c(stages, ir$manual_stages)
+    }
+    return(stages)
+  }
+
   if (length(ir$filters) > 0) {
     predicate <- if (length(ir$filters) == 1) {
       compile_mongo_expr(ir$filters[[1]])
@@ -64,6 +74,47 @@ compile_pipeline <- function(x) {
   }
 
   stages
+}
+
+#' @keywords internal
+compile_ir_op <- function(op) {
+  switch(
+    op$type,
+    filter = list(list(`$match` = list(`$expr` = compile_filter_expr(op$predicates)))),
+    mutate = c(
+      if (length(op$computed) > 0) {
+        list(list(`$addFields` = lapply(op$computed, compile_mongo_expr)))
+      } else {
+        list()
+      },
+      if (length(op$sequence_fields) > 0) {
+        compile_sequence_stages(op$sequence_fields, op$groups)
+      } else {
+        list()
+      }
+    ),
+    project = list(list(`$project` = compile_projection_stage(op$projection))),
+    summarise = list(
+      list(`$group` = compile_group_stage(op)),
+      list(`$project` = compile_summary_projection(op))
+    ),
+    sort = list(list(`$sort` = lapply(op$order, as.integer))),
+    slice = compile_slice_stages(op$slice),
+    unwind = list(list(`$unwind` = c(
+      list(path = field_reference(op$field_source)),
+      if (isTRUE(op$preserve_empty)) list(preserveNullAndEmptyArrays = TRUE) else list()
+    ))),
+    abort_invalid("compile_pipeline()", paste("cannot compile op", op$type))
+  )
+}
+
+#' @keywords internal
+compile_filter_expr <- function(predicates) {
+  if (length(predicates) == 1L) {
+    return(compile_mongo_expr(predicates[[1]]))
+  }
+
+  list(`$and` = lapply(predicates, compile_mongo_expr))
 }
 
 #' @keywords internal
@@ -194,10 +245,13 @@ compile_projection_stage <- function(projection) {
 
 #' @keywords internal
 compile_group_stage <- function(ir) {
-  id_stage <- if (length(ir$groups) == 0) {
+  groups <- ir$groups %||% character()
+  group_sources <- ir$group_sources %||% stats::setNames(groups, groups)
+
+  id_stage <- if (length(groups) == 0) {
     NULL
   } else {
-    stats::setNames(lapply(ir$groups, field_reference), ir$groups)
+    stats::setNames(lapply(unname(group_sources), field_reference), names(group_sources))
   }
 
   summaries <- lapply(ir$summaries, compile_agg)
@@ -207,8 +261,9 @@ compile_group_stage <- function(ir) {
 #' @keywords internal
 compile_summary_projection <- function(ir) {
   stage <- list(`_id` = 0L)
-  if (length(ir$groups) > 0) {
-    for (group in ir$groups) {
+  groups <- ir$groups %||% character()
+  if (length(groups) > 0) {
+    for (group in groups) {
       stage[[group]] <- field_reference(paste0("_id.", group))
     }
   }

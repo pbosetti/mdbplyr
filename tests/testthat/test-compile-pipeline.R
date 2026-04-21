@@ -118,3 +118,74 @@ test_that("filter inlines local values while preserving dotted field references"
     list("$message.measurements.Fx", 10)
   )
 })
+
+test_that("select on a dotted field preserves native nested projection by default", {
+  tbl <- mock_tbl(tibble::tibble(`message.measurements.Fx` = c(5, 15)), name = "force") |>
+    dplyr::select(`message.measurements.Fx`)
+
+  pipeline <- compile_pipeline(tbl)
+
+  expect_equal(vapply(pipeline, names, character(1)), "$project")
+  expect_equal(
+    pipeline[[1]]$`$project`$`message.measurements.Fx`,
+    1L
+  )
+})
+
+test_that("flatten_fields compiles to a projection with safe aliases", {
+  collection <- mock_collection(tibble::tibble(
+    id = 1,
+    message = list(list(timestamp = 1, measurements = list(Fx = 2, Fy = 3)))
+  ))
+
+  tbl <- tbl_mongo(collection) |>
+    infer_schema() |>
+    flatten_fields()
+
+  pipeline <- compile_pipeline(tbl)
+
+  expect_equal(vapply(pipeline, names, character(1)), "$project")
+  expect_equal(unname(pipeline[[1]]$`$project`[[1]]), 1L)
+  expect_true(any(vapply(pipeline[[1]]$`$project`, function(x) identical(x, "$message.timestamp"), logical(1))))
+  expect_true(any(vapply(
+    pipeline[[1]]$`$project`,
+    function(x) identical(x, "$message.measurements.Fx"),
+    logical(1)
+  )))
+})
+
+test_that("unwind_array preserves call order before downstream filter and summarise", {
+  tbl <- mock_tbl(tibble::tibble(
+    grp = c("a", "b"),
+    items = I(list(c(1, 3), c(2, 4)))
+  )) |>
+    unwind_array(items) |>
+    dplyr::filter(items > 2) |>
+    dplyr::group_by(grp) |>
+    dplyr::summarise(n = n())
+
+  pipeline <- compile_pipeline(tbl)
+
+  expect_equal(vapply(pipeline, names, character(1)), c("$unwind", "$match", "$group", "$project"))
+  expect_equal(pipeline[[1]]$`$unwind`$path, "$items")
+})
+
+test_that("flattened visible field names stay addressable in later predicates", {
+  collection <- mock_collection(tibble::tibble(
+    id = 1:2,
+    message = list(
+      list(measurements = list(Fx = 1)),
+      list(measurements = list(Fx = 3))
+    )
+  ))
+
+  tbl <- tbl_mongo(collection) |>
+    infer_schema() |>
+    flatten_fields() |>
+    dplyr::filter(`message.measurements.Fx` > 1)
+
+  pipeline <- compile_pipeline(tbl)
+
+  expect_equal(vapply(pipeline, names, character(1)), c("$project", "$match"))
+  expect_match(render_pipeline_json(pipeline), "__mdbplyr_col_")
+})

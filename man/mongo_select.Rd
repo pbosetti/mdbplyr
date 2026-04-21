@@ -17,6 +17,12 @@ A modified \code{tbl_mongo} object.
 \description{
 Select fields from a lazy Mongo query
 }
+\details{
+Selecting a dotted field path such as \code{`message.measurements.Fx`} does
+not flatten nested documents by default. The collected result preserves the
+native nested structure unless you explicitly rename the field in \code{select()}
+or call \code{\link[=flatten_fields]{flatten_fields()}}.
+}
 \examples{
 tbl <- tbl_mongo(
   list(name = "orders"),

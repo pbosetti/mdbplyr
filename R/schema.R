@@ -55,8 +55,8 @@ schema_fields.mongo_src <- function(x) {
 #' @export
 schema_fields.tbl_mongo <- function(x) {
   ir <- x$ir
-  if (length(ir$summaries) > 0) {
-    return(unique(c(ir$groups, names(ir$summaries))))
+  if (!is.null(ir$field_map)) {
+    return(names(ir$field_map))
   }
 
   fields <- ir$schema %||% character()
@@ -75,12 +75,20 @@ infer_schema.tbl_mongo <- function(x) {
 
   src <- x$src
   src$schema <- inferred
-  update_ir(new_tbl_mongo(src, x$ir), schema = inferred)
+  update_ir(
+    new_tbl_mongo(src, x$ir),
+    schema = inferred,
+    field_map = stats::setNames(inferred, inferred)
+  )
 }
 
 #' @keywords internal
 projection_mapping <- function(x) {
   ir <- x$ir
+  if (!is.null(ir$field_map)) {
+    return(ir$field_map)
+  }
+
   if (!is.null(ir$projection)) {
     return(ir$projection)
   }
@@ -92,6 +100,104 @@ projection_mapping <- function(x) {
     mapping <- c(mapping, stats::setNames(computed_names, computed_names))
   }
   mapping
+}
+
+#' @keywords internal
+choose_output_name <- function(visible, source_visible = NULL, source_actual = NULL, field_map = character(), used = character()) {
+  if (!is.null(source_visible) &&
+      identical(source_visible, visible) &&
+      !is.null(source_actual) &&
+      source_visible %in% names(field_map) &&
+      identical(unname(field_map[source_visible]), source_actual) &&
+      is_safe_output_name(source_actual) &&
+      !source_actual %in% used) {
+    return(source_actual)
+  }
+
+  if (is_safe_output_name(visible) && !visible %in% used) {
+    return(visible)
+  }
+
+  allocate_output_name(used)
+}
+
+#' @keywords internal
+build_projection_shape <- function(current_map, visible_sources) {
+  projection <- character()
+  field_map <- character()
+  used <- character()
+
+  for (visible in names(visible_sources)) {
+    source_visible <- unname(visible_sources[[visible]])
+    source_actual <- resolve_field_sources(source_visible, current_map)
+    output_name <- choose_output_name(
+      visible = visible,
+      source_visible = source_visible,
+      source_actual = source_actual,
+      field_map = current_map,
+      used = used
+    )
+    projection[[output_name]] <- source_actual
+    field_map[[visible]] <- output_name
+    used <- c(used, output_name)
+  }
+
+  list(
+    projection = as_named_character(projection),
+    field_map = as_named_character(field_map)
+  )
+}
+
+#' @keywords internal
+append_field_map <- function(current_map, visible_names, collect_map = NULL) {
+  field_map <- current_map
+  if (is.null(field_map)) {
+    field_map <- character()
+  }
+
+  used <- unique(unname(c(field_map, collect_map %||% character())))
+  added <- character()
+
+  for (visible in visible_names) {
+    source_actual <- resolve_field_sources(visible, field_map)
+    existing_actual <- unname(field_map[visible])
+    used_now <- if (length(existing_actual) && nzchar(existing_actual)) {
+      setdiff(used, existing_actual)
+    } else {
+      used
+    }
+    output_name <- choose_output_name(
+      visible = visible,
+      source_visible = visible,
+      source_actual = source_actual,
+      field_map = field_map,
+      used = used_now
+    )
+    field_map[[visible]] <- output_name
+    added[[visible]] <- output_name
+    used <- c(used, output_name)
+  }
+
+  list(
+    field_map = as_named_character(field_map),
+    added = as_named_character(added)
+  )
+}
+
+#' @keywords internal
+resolve_field_sources <- function(names, field_map) {
+  if (!length(names)) {
+    return(character())
+  }
+
+  if (is.null(field_map)) {
+    return(names)
+  }
+
+  values <- unname(field_map[names])
+  missing <- is.na(values) | !nzchar(values)
+  values[missing] <- names[missing]
+  values
 }
 
 #' @keywords internal
@@ -130,7 +236,9 @@ unwrap_document_value <- function(value) {
     return(value)
   }
 
-  if (is.list(value) && length(value) == 1L) {
+  if (is.list(value) &&
+      length(value) == 1L &&
+      (is.null(names(value)) || !nzchar(names(value)[[1L]]))) {
     inner <- value[[1L]]
     if (is.list(inner) || is.data.frame(inner)) {
       return(unwrap_document_value(inner))

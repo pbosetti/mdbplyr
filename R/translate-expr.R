@@ -55,13 +55,17 @@ pronoun_reference_name <- function(expr, pronoun, context) {
 }
 
 #' @keywords internal
-expr_has_field_reference <- function(expr, fields = character()) {
+expr_has_field_reference <- function(expr, fields = character(), field_map = NULL) {
   if (rlang::is_quosure(expr)) {
     expr <- rlang::get_expr(expr)
   }
 
+  if (is.null(field_map) && !is.null(fields)) {
+    field_map <- stats::setNames(fields, fields)
+  }
+
   if (rlang::is_symbol(expr)) {
-    return(is.null(fields) || rlang::as_string(expr) %in% fields)
+    return(is.null(field_map) || rlang::as_string(expr) %in% names(field_map))
   }
 
   if (!rlang::is_call(expr)) {
@@ -78,7 +82,13 @@ expr_has_field_reference <- function(expr, fields = character()) {
     }
   }
 
-  any(vapply(rlang::call_args(expr), expr_has_field_reference, logical(1), fields = fields))
+  any(vapply(
+    rlang::call_args(expr),
+    expr_has_field_reference,
+    logical(1),
+    fields = fields,
+    field_map = field_map
+  ))
 }
 
 #' @keywords internal
@@ -184,18 +194,21 @@ translate_substr_expr <- function(args, context, expr, env, fields) {
 }
 
 #' @keywords internal
-translate_expr <- function(expr, context = "scalar", env = NULL, fields = NULL) {
+translate_expr <- function(expr, context = "scalar", env = NULL, fields = NULL, field_map = NULL) {
   if (rlang::is_quosure(expr)) {
     env <- rlang::quo_get_env(expr)
     expr <- rlang::get_expr(expr)
   }
 
   env <- env %||% parent.frame()
+  if (is.null(field_map) && !is.null(fields)) {
+    field_map <- stats::setNames(fields, fields)
+  }
 
   if (rlang::is_symbol(expr)) {
     name <- rlang::as_string(expr)
-    if (is.null(fields) || name %in% fields) {
-      return(list(type = "field", name = name))
+    if (is.null(field_map) || name %in% names(field_map)) {
+      return(list(type = "field", name = name, source = resolve_field_sources(name, field_map)))
     }
     return(translate_local_literal(expr, env = env, context = context))
   }
@@ -214,7 +227,8 @@ translate_expr <- function(expr, context = "scalar", env = NULL, fields = NULL) 
   if (rlang::is_call(expr, "$")) {
     lhs <- args[[1]]
     if (rlang::is_symbol(lhs, ".data")) {
-      return(list(type = "field", name = pronoun_reference_name(expr, ".data", context)))
+      name <- pronoun_reference_name(expr, ".data", context)
+      return(list(type = "field", name = name, source = resolve_field_sources(name, field_map)))
     }
     if (rlang::is_symbol(lhs, ".env")) {
       return(list(
@@ -225,10 +239,10 @@ translate_expr <- function(expr, context = "scalar", env = NULL, fields = NULL) 
   }
 
   if (identical(fn, "(")) {
-    return(translate_expr(args[[1]], context = context, env = env, fields = fields))
+    return(translate_expr(args[[1]], context = context, env = env, fields = fields, field_map = field_map))
   }
 
-  if (!is.null(fields) && !expr_has_field_reference(expr, fields = fields)) {
+  if (!is.null(field_map) && !expr_has_field_reference(expr, fields = fields, field_map = field_map)) {
     return(translate_local_literal(expr, env = env, context = context))
   }
 
@@ -268,7 +282,7 @@ translate_expr <- function(expr, context = "scalar", env = NULL, fields = NULL) 
     return(list(
       type = "comparison",
       fn = comparison_map[[fn]],
-      args = lapply(args, function(arg) translate_expr(arg, context = "predicate", env = env, fields = fields))
+      args = lapply(args, function(arg) translate_expr(arg, context = "predicate", env = env, fields = fields, field_map = field_map))
     ))
   }
 
@@ -276,49 +290,49 @@ translate_expr <- function(expr, context = "scalar", env = NULL, fields = NULL) 
     return(list(
       type = "boolean",
       fn = boolean_map[[fn]],
-      args = lapply(args, function(arg) translate_expr(arg, context = "predicate", env = env, fields = fields))
+      args = lapply(args, function(arg) translate_expr(arg, context = "predicate", env = env, fields = fields, field_map = field_map))
     ))
   }
 
   if (identical(fn, "!")) {
-    return(list(type = "not", arg = translate_expr(args[[1]], context = "predicate", env = env, fields = fields)))
+    return(list(type = "not", arg = translate_expr(args[[1]], context = "predicate", env = env, fields = fields, field_map = field_map)))
   }
 
   if (fn %in% names(arithmetic_map)) {
     if (length(args) == 1 && identical(fn, "+")) {
-      return(translate_expr(args[[1]], context = context, env = env, fields = fields))
+      return(translate_expr(args[[1]], context = context, env = env, fields = fields, field_map = field_map))
     }
 
     if (length(args) == 1 && identical(fn, "-")) {
       return(make_call_expr("multiply", list(
         list(type = "literal", value = -1),
-        translate_expr(args[[1]], context = context, env = env, fields = fields)
+        translate_expr(args[[1]], context = context, env = env, fields = fields, field_map = field_map)
       )))
     }
 
-    return(make_call_expr(arithmetic_map[[fn]], lapply(args, function(arg) translate_expr(arg, context = context, env = env, fields = fields))))
+    return(make_call_expr(arithmetic_map[[fn]], lapply(args, function(arg) translate_expr(arg, context = context, env = env, fields = fields, field_map = field_map))))
   }
 
   if (fn %in% names(scalar_map)) {
-    return(make_call_expr(scalar_map[[fn]], lapply(args, function(arg) translate_expr(arg, context = context, env = env, fields = fields))))
+    return(make_call_expr(scalar_map[[fn]], lapply(args, function(arg) translate_expr(arg, context = context, env = env, fields = fields, field_map = field_map))))
   }
 
   if (identical(fn, "log")) {
-    return(translate_log_expr(args, context, expr, env = env, fields = fields))
+    return(translate_log_expr(args, context, expr, env = env, fields = field_map))
   }
 
   if (fn %in% names(variadic_map)) {
     if (!length(args)) {
       abort_invalid(paste0(fn, "()"), "requires at least one argument.")
     }
-    return(make_call_expr(variadic_map[[fn]], lapply(args, function(arg) translate_expr(arg, context = context, env = env, fields = fields))))
+    return(make_call_expr(variadic_map[[fn]], lapply(args, function(arg) translate_expr(arg, context = context, env = env, fields = fields, field_map = field_map))))
   }
 
   if (identical(fn, "%in%")) {
     if (length(args) != 2) {
       abort_invalid("%in%", "requires left and right operands.")
     }
-    return(make_call_expr("in", lapply(args, function(arg) translate_expr(arg, context = context, env = env, fields = fields))))
+    return(make_call_expr("in", lapply(args, function(arg) translate_expr(arg, context = context, env = env, fields = fields, field_map = field_map))))
   }
 
   if (fn %in% c("paste", "paste0")) {
@@ -327,17 +341,17 @@ translate_expr <- function(expr, context = "scalar", env = NULL, fields = NULL) 
       context,
       expr,
       env = env,
-      fields = fields,
+      fields = field_map,
       default_sep = if (identical(fn, "paste")) " " else ""
     ))
   }
 
   if (identical(fn, "nchar")) {
-    return(translate_nchar_expr(args, context, expr, env = env, fields = fields))
+    return(translate_nchar_expr(args, context, expr, env = env, fields = field_map))
   }
 
   if (fn %in% c("substr", "substring")) {
-    return(translate_substr_expr(args, context, expr, env = env, fields = fields))
+    return(translate_substr_expr(args, context, expr, env = env, fields = field_map))
   }
 
   if (identical(fn, "round")) {
@@ -355,7 +369,7 @@ translate_expr <- function(expr, context = "scalar", env = NULL, fields = NULL) 
     }
     return(list(
       type = "round",
-      arg = translate_expr(args[[1]], context = context, env = env, fields = fields),
+      arg = translate_expr(args[[1]], context = context, env = env, fields = fields, field_map = field_map),
       digits = as.integer(digits)
     ))
   }
@@ -366,9 +380,9 @@ translate_expr <- function(expr, context = "scalar", env = NULL, fields = NULL) 
     }
     return(list(
       type = "if_else",
-      condition = translate_expr(args[[1]], context = "predicate", env = env, fields = fields),
-      true = translate_expr(args[[2]], context = context, env = env, fields = fields),
-      false = translate_expr(args[[3]], context = context, env = env, fields = fields)
+      condition = translate_expr(args[[1]], context = "predicate", env = env, fields = fields, field_map = field_map),
+      true = translate_expr(args[[2]], context = context, env = env, fields = fields, field_map = field_map),
+      false = translate_expr(args[[3]], context = context, env = env, fields = fields, field_map = field_map)
     ))
   }
 
@@ -385,11 +399,11 @@ translate_expr <- function(expr, context = "scalar", env = NULL, fields = NULL) 
       lhs <- rlang::f_lhs(branch)
       rhs <- rlang::f_rhs(branch)
       if (isTRUE(lhs)) {
-        default <- translate_expr(rhs, context = context, env = env, fields = fields)
+        default <- translate_expr(rhs, context = context, env = env, fields = fields, field_map = field_map)
       } else {
         cases[[length(cases) + 1]] <- list(
-          condition = translate_expr(lhs, context = "predicate", env = env, fields = fields),
-          value = translate_expr(rhs, context = context, env = env, fields = fields)
+          condition = translate_expr(lhs, context = "predicate", env = env, fields = fields, field_map = field_map),
+          value = translate_expr(rhs, context = context, env = env, fields = fields, field_map = field_map)
         )
       }
     }
@@ -398,7 +412,7 @@ translate_expr <- function(expr, context = "scalar", env = NULL, fields = NULL) 
   }
 
   if (identical(fn, "is.na")) {
-    return(list(type = "is_na", arg = translate_expr(args[[1]], context = context, env = env, fields = fields)))
+    return(list(type = "is_na", arg = translate_expr(args[[1]], context = context, env = env, fields = fields, field_map = field_map)))
   }
 
   abort_unsupported(context, expr)
@@ -435,7 +449,7 @@ compile_mongo_args <- function(args) {
 compile_mongo_expr <- function(expr) {
   switch(
     expr$type,
-    field = field_reference(expr$name),
+    field = field_reference(expr$source %||% expr$name),
     literal = as_mongo_literal(expr$value),
     comparison = stats::setNames(list(compile_mongo_args(expr$args)), paste0("$", expr$fn)),
     boolean = stats::setNames(list(compile_mongo_args(expr$args)), paste0("$", expr$fn)),

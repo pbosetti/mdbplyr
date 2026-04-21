@@ -124,6 +124,36 @@ apply_project <- function(data, spec) {
     return(tibble::as_tibble(data[, keep, drop = FALSE]))
   }
 
+  if (any(grepl("\\.", names(spec)))) {
+    rows <- lapply(seq_len(nrow(data)), function(i) {
+      row <- as.list(data[i, , drop = FALSE])
+      projected <- list()
+
+      for (name in names(spec)) {
+        expr <- spec[[name]]
+        if (identical(name, "_id") && identical(expr, 0L)) {
+          next
+        }
+
+        value <- if (identical(expr, 1L)) {
+          resolve_item_path(row, strsplit(name, ".", fixed = TRUE)[[1]])
+        } else {
+          eval_expr(expr, data[i, , drop = FALSE])
+        }
+
+        if (grepl("\\.", name)) {
+          projected <- set_nested_path_value(projected, strsplit(name, ".", fixed = TRUE)[[1]], value)
+        } else {
+          projected[[name]] <- value
+        }
+      }
+
+      tibble::as_tibble_row(lapply(projected, as_group_cell))
+    })
+
+    return(dplyr::bind_rows(rows))
+  }
+
   out <- list()
   for (name in names(spec)) {
     expr <- spec[[name]]
@@ -185,45 +215,44 @@ apply_unwind <- function(data, spec) {
   if (is.character(spec)) {
     path <- spec
     index_name <- NULL
+    preserve_empty <- FALSE
   } else {
     path <- spec$path
     index_name <- spec$includeArrayIndex
+    preserve_empty <- isTRUE(spec$preserveNullAndEmptyArrays)
   }
 
   field_name <- if (startsWith(path, "$")) substring(path, 2L) else path
-  col <- data[[field_name]]
-  other_cols <- setdiff(names(data), field_name)
   result_rows <- list()
 
   for (i in seq_len(nrow(data))) {
-    arr <- col[[i]]
-    base <- as.list(data[i, other_cols, drop = FALSE])
+    row <- as.list(data[i, , drop = FALSE])
+    arr <- extract_row_path(row, field_name)
 
-    if (is.data.frame(arr)) {
+    if (is.data.frame(arr) && nrow(arr) > 0L) {
       for (j in seq_len(nrow(arr))) {
-        new_row <- base
-        new_row[[field_name]] <- list(as.list(arr[j, , drop = FALSE]))
+        new_row <- set_row_path(row, field_name, as.list(arr[j, , drop = FALSE]))
         if (!is.null(index_name)) {
           new_row[[index_name]] <- j - 1L
         }
         result_rows[[length(result_rows) + 1L]] <- tibble::as_tibble(new_row)
       }
-    } else if (is.list(arr)) {
+    } else if (is.list(arr) && length(arr) > 0L) {
       for (j in seq_along(arr)) {
-        new_row <- base
-        new_row[[field_name]] <- list(arr[[j]])
+        new_row <- set_row_path(row, field_name, arr[[j]])
         if (!is.null(index_name)) {
           new_row[[index_name]] <- j - 1L
         }
         result_rows[[length(result_rows) + 1L]] <- tibble::as_tibble(new_row)
       }
     } else {
-      new_row <- base
-      new_row[[field_name]] <- arr
-      if (!is.null(index_name)) {
-        new_row[[index_name]] <- 0L
+      if (isTRUE(preserve_empty)) {
+        new_row <- set_row_path(row, field_name, arr)
+        if (!is.null(index_name)) {
+          new_row[[index_name]] <- 0L
+        }
+        result_rows[[length(result_rows) + 1L]] <- tibble::as_tibble(new_row)
       }
-      result_rows[[length(result_rows) + 1L]] <- tibble::as_tibble(new_row)
     }
   }
 
@@ -232,6 +261,81 @@ apply_unwind <- function(data, spec) {
   }
 
   dplyr::bind_rows(result_rows)
+}
+
+extract_row_path <- function(row, path) {
+  parts <- strsplit(path, ".", fixed = TRUE)[[1]]
+  value <- row[[parts[[1]]]]
+
+  for (part in parts[-1]) {
+    value <- unwrap_row_value(value)
+    if (!is.list(value) || is.null(value[[part]])) {
+      return(NULL)
+    }
+    value <- value[[part]]
+  }
+
+  unwrap_row_value(value)
+}
+
+set_row_path <- function(row, path, value) {
+  parts <- strsplit(path, ".", fixed = TRUE)[[1]]
+
+  if (length(parts) == 1L) {
+    row[[parts[[1]]]] <- wrap_row_assignment(value)
+    return(row)
+  }
+
+  top_name <- parts[[1]]
+  top_value <- row[[top_name]]
+  wrapped_list <- is.list(top_value) && length(top_value) == 1L && is.list(top_value[[1L]]) && !is.data.frame(top_value[[1L]])
+  nested <- unwrap_row_value(top_value)
+  nested <- set_nested_path_value(nested, parts[-1], value)
+  row[[top_name]] <- if (wrapped_list) list(nested) else nested
+  row
+}
+
+wrap_row_assignment <- function(value) {
+  if (is.data.frame(value)) {
+    return(list(value))
+  }
+  if (is.list(value) && !is.null(names(value)) && any(nzchar(names(value)))) {
+    return(list(value))
+  }
+  value
+}
+
+set_nested_path_value <- function(x, parts, value) {
+  if (!length(parts)) {
+    return(value)
+  }
+
+  if (is.null(x) || !is.list(x)) {
+    x <- list()
+  }
+
+  part <- parts[[1]]
+  if (length(parts) == 1L) {
+    x[[part]] <- value
+    return(x)
+  }
+
+  x[[part]] <- set_nested_path_value(unwrap_row_value(x[[part]]), parts[-1], value)
+  x
+}
+
+unwrap_row_value <- function(value) {
+  if (is.data.frame(value) && nrow(value) == 1L) {
+    return(as.list(value[1, , drop = FALSE]))
+  }
+  if (is.list(value) &&
+      length(value) == 1L &&
+      (is.null(names(value)) || !nzchar(names(value)[[1L]])) &&
+      is.list(value[[1L]]) &&
+      !is.data.frame(value[[1L]])) {
+    return(value[[1L]])
+  }
+  value
 }
 
 apply_replace_root <- function(data, spec) {
@@ -501,17 +605,42 @@ resolve_field <- function(data, path) {
   }
 
   parts <- strsplit(path, ".", fixed = TRUE)[[1]]
-  value <- data[[parts[[1]]]]
+  top <- data[[parts[[1]]]]
   if (length(parts) == 1) {
-    return(value)
+    return(top)
   }
 
-  for (part in parts[-1]) {
-    value <- sapply(value, function(item) {
-      if (is.list(item) && !is.null(item[[part]])) item[[part]] else NA
-    }, simplify = TRUE, USE.NAMES = FALSE)
+  values <- lapply(seq_len(nrow(data)), function(i) {
+    resolve_item_path(top[[i]], parts[-1])
+  })
+
+  if (all(vapply(values, function(x) is.null(x) || (is.atomic(x) && length(x) == 1L), logical(1)))) {
+    template <- NULL
+    for (value in values) {
+      if (!is.null(value)) {
+        template <- value
+        break
+      }
+    }
+    if (is.null(template)) {
+      template <- NA
+    }
+    return(vapply(values, function(x) if (is.null(x)) NA else x, template))
   }
-  value
+
+  values
+}
+
+resolve_item_path <- function(item, parts) {
+  value <- unwrap_row_value(item)
+  for (part in parts) {
+    value <- unwrap_row_value(value)
+    if (!is.list(value) || is.null(value[[part]])) {
+      return(NULL)
+    }
+    value <- value[[part]]
+  }
+  unwrap_row_value(value)
 }
 
 eval_agg <- function(expr, data) {

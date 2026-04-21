@@ -38,6 +38,8 @@ tbl_mongo <- function(collection, name = NULL, schema = NULL, executor = NULL) {
 
   ir <- list(
     schema = unique(schema %||% src$schema %||% character()),
+    field_map = stats::setNames(unique(schema %||% src$schema %||% character()), unique(schema %||% src$schema %||% character())),
+    collect_map = NULL,
     filters = list(),
     projection = NULL,
     computed = list(),
@@ -46,6 +48,7 @@ tbl_mongo <- function(collection, name = NULL, schema = NULL, executor = NULL) {
     order = list(),
     slices = list(),
     row_ops = list(),
+    ops = list(),
     manual_stages = list()
   )
 
