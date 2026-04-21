@@ -31,3 +31,13 @@ test_that("show_query renders comparison predicates with array syntax", {
   expect_match(rendered, "\\$gt\"\\s*:\\s*\\[")
   expect_no_match(rendered, "\"1\"\\s*:")
 })
+
+test_that("show_query renders POSIXct literals as ISODate", {
+  t0 <- as.POSIXct("2020-01-01 00:00:00", tz = "UTC")
+  tbl <- mock_tbl(tibble::tibble(`message.timestamp` = t0 + c(0, 20))) |>
+    dplyr::filter(`message.timestamp` > t0 + 10)
+
+  rendered <- show_query(tbl)
+
+  expect_match(rendered, "ISODate\\(\"2020-01-01T00:00:10.000Z\"\\)")
+})

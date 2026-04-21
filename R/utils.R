@@ -34,6 +34,48 @@ field_reference <- function(name) {
 }
 
 #' @keywords internal
+format_mongo_datetime <- function(x) {
+  format(as.POSIXct(x, tz = "UTC"), "%Y-%m-%dT%H:%M:%OS3Z", tz = "UTC")
+}
+
+#' @keywords internal
+as_mongo_literal <- function(x) {
+  if (inherits(x, "POSIXt") || inherits(x, "Date")) {
+    if (length(x) == 1L) {
+      return(list(`$date` = format_mongo_datetime(x)))
+    }
+    return(lapply(as.list(x), as_mongo_literal))
+  }
+
+  if (is.list(x) && !is.data.frame(x)) {
+    return(lapply(x, as_mongo_literal))
+  }
+
+  x
+}
+
+#' @keywords internal
+pipeline_to_json <- function(pipeline, pretty = FALSE) {
+  jsonlite::toJSON(
+    pipeline,
+    auto_unbox = TRUE,
+    pretty = pretty,
+    null = "null"
+  )
+}
+
+#' @keywords internal
+render_pipeline_json <- function(pipeline) {
+  rendered <- pipeline_to_json(pipeline, pretty = TRUE)
+  gsub(
+    "\\{\\s*\"\\$date\"\\s*:\\s*\"([^\"]+)\"\\s*\\}",
+    "ISODate(\"\\1\")",
+    rendered,
+    perl = TRUE
+  )
+}
+
+#' @keywords internal
 expr_text <- function(x) {
   if (rlang::is_quosure(x)) {
     x <- rlang::get_expr(x)

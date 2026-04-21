@@ -31,12 +31,7 @@ mongo_src <- function(collection, name = NULL, schema = NULL, executor = NULL, c
     aggregate_method <- tryCatch(collection$aggregate, error = function(...) NULL)
     if (is.function(aggregate_method)) {
       executor <- function(pipeline, ...) {
-        aggregate_method(jsonlite::toJSON(
-          pipeline,
-          auto_unbox = TRUE,
-          null = "null",
-          pretty = FALSE
-        ), ...)
+        aggregate_method(pipeline_to_json(pipeline, pretty = FALSE), ...)
       }
     }
   }
@@ -45,12 +40,7 @@ mongo_src <- function(collection, name = NULL, schema = NULL, executor = NULL, c
     aggregate_method <- tryCatch(collection$aggregate, error = function(...) NULL)
     if (is.function(aggregate_method)) {
       cursor_executor <- function(pipeline, ...) {
-        aggregate_method(jsonlite::toJSON(
-          pipeline,
-          auto_unbox = TRUE,
-          null = "null",
-          pretty = FALSE
-        ), iterate = TRUE, ...)
+        aggregate_method(pipeline_to_json(pipeline, pretty = FALSE), iterate = TRUE, ...)
       }
     }
   }

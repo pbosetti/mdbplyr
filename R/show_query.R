@@ -21,7 +21,7 @@ show_query <- function(x, ...) {
 #' @export
 show_query.tbl_mongo <- function(x, ...) {
   pipeline <- compile_pipeline(x)
-  rendered <- jsonlite::toJSON(pipeline, auto_unbox = TRUE, pretty = TRUE, null = "null")
+  rendered <- render_pipeline_json(pipeline)
   cat(rendered, "
 ")
   invisible(rendered)

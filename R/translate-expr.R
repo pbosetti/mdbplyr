@@ -436,7 +436,7 @@ compile_mongo_expr <- function(expr) {
   switch(
     expr$type,
     field = field_reference(expr$name),
-    literal = expr$value,
+    literal = as_mongo_literal(expr$value),
     comparison = stats::setNames(list(compile_mongo_args(expr$args)), paste0("$", expr$fn)),
     boolean = stats::setNames(list(compile_mongo_args(expr$args)), paste0("$", expr$fn)),
     not = list(`$not` = list(compile_mongo_expr(expr$arg))),

@@ -286,6 +286,9 @@ eval_expr <- function(expr, data) {
   if (is.character(expr) && length(expr) == 1 && startsWith(expr, "$")) {
     return(resolve_field(data, substring(expr, 2)))
   }
+  if (is.list(expr) && identical(names(expr), "$date")) {
+    return(rep(as.POSIXct(expr$`$date`, tz = "UTC"), nrow(data)))
+  }
   if (!is.list(expr) || is.data.frame(expr)) {
     return(rep(expr, nrow(data)))
   }

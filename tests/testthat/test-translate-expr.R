@@ -85,3 +85,13 @@ test_that("unknown bare symbols fail explicitly", {
     "cannot evaluate local expression"
   )
 })
+
+test_that("date-time literals compile to Mongo date literals", {
+  ts <- as.POSIXct("2020-01-01 00:00:10", tz = "UTC")
+
+  expr <- mdbplyr:::translate_expr(rlang::quo(timestamp > ts), context = "predicate", fields = "timestamp")
+  compiled <- mdbplyr:::compile_mongo_expr(expr)
+
+  expect_equal(compiled$`$gt`[[1]], "$timestamp")
+  expect_equal(compiled$`$gt`[[2]], list(`$date` = "2020-01-01T00:00:10.000Z"))
+})
