@@ -14,6 +14,10 @@ append_projection_fields <- function(projection, fields) {
 #' @param .data A `tbl_mongo` object.
 #' @param ... Named scalar expressions.
 #'
+#' @details
+#' Expression arguments follow the same field-vs-local name resolution rules as
+#' [filter.tbl_mongo()].
+#'
 #' @return A modified `tbl_mongo` object.
 #' @examples
 #' tbl <- tbl_mongo(
@@ -37,7 +41,7 @@ mutate.tbl_mongo <- function(.data, ...) {
   }
 
   is_sequence <- vapply(quos, is_mutate_sequence_expr, logical(1))
-  translated <- lapply(quos[!is_sequence], translate_expr, context = "mutate()")
+  translated <- lapply(quos[!is_sequence], translate_expr, context = "mutate()", fields = schema_fields(.data))
   names(translated) <- names_in[!is_sequence]
   projection <- append_projection_fields(.data$ir$projection, names_in)
   row_ops <- .data$ir$row_ops
@@ -56,6 +60,10 @@ mutate.tbl_mongo <- function(.data, ...) {
 #'
 #' @param .data A `tbl_mongo` object.
 #' @param ... Named scalar expressions.
+#'
+#' @details
+#' Expression arguments follow the same field-vs-local name resolution rules as
+#' [filter.tbl_mongo()].
 #'
 #' @return A modified `tbl_mongo` object.
 #' @examples
@@ -80,7 +88,7 @@ transmute.tbl_mongo <- function(.data, ...) {
   }
 
   is_sequence <- vapply(quos, is_mutate_sequence_expr, logical(1))
-  translated <- lapply(quos[!is_sequence], translate_expr, context = "transmute()")
+  translated <- lapply(quos[!is_sequence], translate_expr, context = "transmute()", fields = schema_fields(.data))
   names(translated) <- names_in[!is_sequence]
   projection <- stats::setNames(names_in, names_in)
   row_ops <- .data$ir$row_ops

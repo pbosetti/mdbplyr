@@ -42,3 +42,46 @@ test_that("compiled extended operators keep literal vectors and array syntax", {
   expect_equal(compiled$`$in`[[2]], c(1, 3, 5))
   expect_null(names(compiled$`$in`))
 })
+
+test_that("bare symbols fall back to local values when not in schema", {
+  x <- 10
+
+  expr <- mdbplyr:::translate_expr(rlang::quo(amount > x), context = "predicate", fields = "amount")
+  compiled <- mdbplyr:::compile_mongo_expr(expr)
+
+  expect_equal(compiled$`$gt`, list("$amount", 10))
+})
+
+test_that("explicit .data and .env pronouns override ambiguity", {
+  x <- 10
+
+  expr <- mdbplyr:::translate_expr(rlang::quo(.data$x > .env$x), context = "predicate", fields = "x")
+  compiled <- mdbplyr:::compile_mongo_expr(expr)
+
+  expect_equal(compiled$`$gt`, list("$x", 10))
+})
+
+test_that("ambiguous bare names keep field precedence", {
+  x <- 10
+
+  expr <- mdbplyr:::translate_expr(rlang::quo(x > 1), context = "predicate", fields = "x")
+  compiled <- mdbplyr:::compile_mongo_expr(expr)
+
+  expect_equal(compiled$`$gt`, list("$x", 1))
+})
+
+test_that("local-only subexpressions inline as literals", {
+  x <- 10
+
+  expr <- mdbplyr:::translate_expr(rlang::quo(amount > x + 1), context = "predicate", fields = "amount")
+  compiled <- mdbplyr:::compile_mongo_expr(expr)
+
+  expect_equal(compiled$`$gt`, list("$amount", 11))
+})
+
+test_that("unknown bare symbols fail explicitly", {
+  expect_error(
+    mdbplyr:::translate_expr(rlang::quo(amount > missing_value), context = "predicate", fields = "amount"),
+    "cannot evaluate local expression"
+  )
+})

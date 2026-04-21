@@ -104,3 +104,17 @@ test_that("mutate sequence preserves call order relative to arrange", {
   expect_equal(vapply(compile_pipeline(before_arrange), names, character(1))[1:4], c("$group", "$unwind", "$replaceRoot", "$sort"))
   expect_equal(vapply(compile_pipeline(after_arrange), names, character(1))[1:4], c("$sort", "$group", "$unwind", "$replaceRoot"))
 })
+
+test_that("filter inlines local values while preserving dotted field references", {
+  x <- 10
+
+  tbl <- mock_tbl(tibble::tibble(`message.measurements.Fx` = c(5, 15)), name = "force") |>
+    dplyr::filter(`message.measurements.Fx` > x)
+
+  pipeline <- compile_pipeline(tbl)
+
+  expect_equal(
+    pipeline[[1]]$`$match`$`$expr`$`$gt`,
+    list("$message.measurements.Fx", 10)
+  )
+})

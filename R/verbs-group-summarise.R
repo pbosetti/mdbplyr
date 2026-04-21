@@ -40,6 +40,10 @@ group_by.tbl_mongo <- function(.data, ..., .add = FALSE, .drop = dplyr::group_by
 #' @param .by Unsupported.
 #' @param .groups Included for dplyr compatibility.
 #'
+#' @details
+#' Summary expressions follow the same field-vs-local name resolution rules as
+#' [filter.tbl_mongo()].
+#'
 #' @return A modified `tbl_mongo` object.
 #' @examples
 #' tbl <- tbl_mongo(
@@ -67,7 +71,7 @@ summarise.tbl_mongo <- function(.data, ..., .by = NULL, .groups = NULL) {
 
   names_in <- rlang::names2(quos)
   names_in[names_in == ""] <- vapply(quos[names_in == ""], expr_text, character(1))
-  translated <- lapply(quos, translate_agg)
+  translated <- lapply(quos, translate_agg, fields = schema_fields(.data))
   names(translated) <- names_in
   update_ir(.data, summaries = translated)
 }

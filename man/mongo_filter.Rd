@@ -21,6 +21,27 @@ A modified \code{tbl_mongo} object.
 \description{
 Filter a lazy Mongo query
 }
+\details{
+Predicate expressions use schema-first tidy evaluation:
+\itemize{
+\item bare names refer to MongoDB fields when they are known fields of the lazy
+table
+\item otherwise, bare names are evaluated in the local R environment and inlined
+as literals
+\item \code{.data$...} always forces a MongoDB field reference
+\item \code{.env$...} always forces a local R value
+\item if a name exists both as a field and as a local variable, the field wins;
+use \code{.env$...} to force the local value
+}
+
+Bare field resolution depends on the known schema of \code{.data}. If a field,
+including a dotted path such as \code{`message.measurements.Fx`}, is missing
+from \code{\link[=schema_fields]{schema_fields()}}, write it explicitly as \code{.data$...} or supply the
+schema when creating the \code{tbl_mongo}.
+
+The same resolution rules apply to expression arguments in
+\code{\link[=mutate.tbl_mongo]{mutate.tbl_mongo()}} and \code{\link[=summarise.tbl_mongo]{summarise.tbl_mongo()}}.
+}
 \examples{
 tbl <- tbl_mongo(
   list(name = "orders"),
@@ -29,4 +50,8 @@ tbl <- tbl_mongo(
 )
 
 dplyr::filter(tbl, amount > 0)
+
+threshold <- 10
+dplyr::filter(tbl, amount > threshold)
+dplyr::filter(tbl, .data$amount > .env$threshold)
 }

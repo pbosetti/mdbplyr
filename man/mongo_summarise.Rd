@@ -21,6 +21,10 @@ A modified \code{tbl_mongo} object.
 \description{
 Summarise a lazy Mongo query
 }
+\details{
+Summary expressions follow the same field-vs-local name resolution rules as
+\code{\link[=filter.tbl_mongo]{filter.tbl_mongo()}}.
+}
 \examples{
 tbl <- tbl_mongo(
   list(name = "orders"),

@@ -1,6 +1,8 @@
 #' @keywords internal
-translate_agg <- function(expr) {
+translate_agg <- function(expr, fields = NULL) {
+  env <- NULL
   if (rlang::is_quosure(expr)) {
+    env <- rlang::quo_get_env(expr)
     expr <- rlang::get_expr(expr)
   }
 
@@ -26,10 +28,11 @@ translate_agg <- function(expr) {
 
   na_rm <- FALSE
   if (!is.null(args$na.rm)) {
-    if (!is_scalar_literal(args$na.rm) || !is.logical(args$na.rm)) {
+    na_rm <- eval_local_literal(args$na.rm, env = env %||% parent.frame(), context = "summarise()")
+    if (!is.logical(na_rm) || length(na_rm) != 1L) {
       abort_unsupported("summarise()", expr, "na.rm must be a literal TRUE or FALSE.")
     }
-    na_rm <- isTRUE(args$na.rm)
+    na_rm <- isTRUE(na_rm)
     args$na.rm <- NULL
   }
 
@@ -37,7 +40,12 @@ translate_agg <- function(expr) {
     abort_unsupported("summarise()", expr, "Only a single summary argument is supported.")
   }
 
-  list(type = "agg", fn = fn, arg = translate_expr(args[[1]], context = "aggregate"), na_rm = na_rm)
+  list(
+    type = "agg",
+    fn = fn,
+    arg = translate_expr(args[[1]], context = "aggregate", env = env, fields = fields),
+    na_rm = na_rm
+  )
 }
 
 #' @keywords internal
