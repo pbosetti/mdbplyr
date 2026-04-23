@@ -41,7 +41,7 @@ compile_pipeline <- function(x) {
   }
 
   if (length(ir$computed) > 0) {
-    stages[[length(stages) + 1]] <- list(`$addFields` = lapply(ir$computed, compile_mongo_expr))
+    stages[[length(stages) + 1]] <- compile_add_fields_stage(ir$computed)
   }
 
   if (!is.null(ir$projection)) {
@@ -81,18 +81,7 @@ compile_ir_op <- function(op) {
   switch(
     op$type,
     filter = list(list(`$match` = list(`$expr` = compile_filter_expr(op$predicates)))),
-    mutate = c(
-      if (length(op$computed) > 0) {
-        list(list(`$addFields` = lapply(op$computed, compile_mongo_expr)))
-      } else {
-        list()
-      },
-      if (length(op$sequence_fields) > 0) {
-        compile_sequence_stages(op$sequence_fields, op$groups)
-      } else {
-        list()
-      }
-    ),
+    mutate = compile_mutate_stages(op),
     project = list(list(`$project` = compile_projection_stage(op$projection))),
     summarise = list(
       list(`$group` = compile_group_stage(op)),
@@ -105,6 +94,42 @@ compile_ir_op <- function(op) {
       if (isTRUE(op$preserve_empty)) list(preserveNullAndEmptyArrays = TRUE) else list()
     ))),
     abort_invalid("compile_pipeline()", paste("cannot compile op", op$type))
+  )
+}
+
+#' @keywords internal
+compile_add_fields_stage <- function(computed) {
+  list(`$addFields` = lapply(computed, compile_mongo_expr))
+}
+
+#' @keywords internal
+compile_mutate_stages <- function(op) {
+  if (!is.null(op$steps)) {
+    stages <- list()
+
+    for (step in op$steps) {
+      stages <- c(stages, switch(
+        step$type,
+        computed = list(compile_add_fields_stage(stats::setNames(list(step$expr), step$field))),
+        sequence = compile_sequence_stages(step$fields, step$groups),
+        abort_invalid("compile_pipeline()", paste("cannot compile mutate step", step$type))
+      ))
+    }
+
+    return(stages)
+  }
+
+  c(
+    if (length(op$computed) > 0) {
+      list(compile_add_fields_stage(op$computed))
+    } else {
+      list()
+    },
+    if (length(op$sequence_fields) > 0) {
+      compile_sequence_stages(op$sequence_fields, op$groups)
+    } else {
+      list()
+    }
   )
 }
 

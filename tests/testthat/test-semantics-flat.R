@@ -76,6 +76,38 @@ test_that("extended scalar operators execute through the mock pipeline", {
   expect_equal(result$max_xy, c(2, 5, 8))
 })
 
+test_that("mutate assignments can reference earlier fields from the same call", {
+  tbl <- mock_tbl(tibble::tibble(a = c(1, 2, 3), b = c(4, 5, 6)))
+
+  result <- tbl |>
+    dplyr::mutate(c = a + b, d = c^2) |>
+    collect()
+
+  expect_equal(result$c, c(5, 7, 9))
+  expect_equal(result$d, c(25, 49, 81))
+})
+
+test_that("mutate preserves call order across sequence and computed assignments", {
+  tbl <- mock_tbl(tibble::tibble(x = c(10, 20, 30)))
+
+  result <- tbl |>
+    dplyr::mutate(i = 1:n(), j = i + 1L) |>
+    collect()
+
+  expect_equal(result$i, c(1L, 2L, 3L))
+  expect_equal(result$j, c(2, 3, 4))
+})
+
+test_that("transmute assignments can reference earlier fields from the same call", {
+  tbl <- mock_tbl(tibble::tibble(a = c(1, 2, 3), b = c(4, 5, 6)))
+
+  result <- tbl |>
+    dplyr::transmute(c = a + b, d = c^2) |>
+    collect()
+
+  expect_equal(result, tibble::tibble(c = c(5, 7, 9), d = c(25, 49, 81)))
+})
+
 test_that("append_stage participates in lazy execution", {
   tbl <- mock_tbl(tibble::tibble(x = 1:4, y = c(10, 40, 20, 30)))
 

@@ -105,6 +105,18 @@ test_that("mutate sequence preserves call order relative to arrange", {
   expect_equal(vapply(compile_pipeline(after_arrange), names, character(1))[1:4], c("$sort", "$group", "$unwind", "$replaceRoot"))
 })
 
+test_that("mutate compiles dependent assignments as ordered stages", {
+  tbl <- mock_tbl(tibble::tibble(a = 1:3, b = 4:6)) |>
+    dplyr::mutate(c = a + b, d = c^2)
+
+  pipeline <- compile_pipeline(tbl)
+  stage_names <- vapply(pipeline, names, character(1))
+
+  expect_equal(stage_names, c("$addFields", "$addFields"))
+  expect_equal(pipeline[[1]]$`$addFields`$c, list(`$add` = list("$a", "$b")))
+  expect_equal(pipeline[[2]]$`$addFields`$d, list(`$pow` = list("$c", 2)))
+})
+
 test_that("filter inlines local values while preserving dotted field references", {
   x <- 10
 
