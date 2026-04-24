@@ -1,6 +1,9 @@
 # mdbplyr
 
-[![CI](https://github.com/pbosetti/mdbplyr/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/pbosetti/mdbplyr/actions/workflows/ci.yaml) [![](https://cranlogs.r-pkg.org/badges/mdbplyr)](https://cran.r-project.org/package=mdbplyr) [![CRAN status](https://www.r-pkg.org/badges/version/mdbplyr)](https://CRAN.R-project.org/package=mdbplyr) [![R-universe version](https://pbosetti.r-universe.dev/mdbplyr/badges/version)](https://pbosetti.r-universe.dev/mdbplyr)
+[![CI](https://github.com/pbosetti/mdbplyr/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/pbosetti/mdbplyr/actions/workflows/ci.yaml) 
+[![Downloads](https://cranlogs.r-pkg.org/badges/mdbplyr)](https://cran.r-project.org/package=mdbplyr) 
+[![CRAN status](https://www.r-pkg.org/badges/version/mdbplyr)](https://CRAN.R-project.org/package=mdbplyr) 
+[![R-universe version](https://pbosetti.r-universe.dev/mdbplyr/badges/version)](https://pbosetti.r-universe.dev/mdbplyr)
 
 <img src="media/mdbplyr.png" width="200" />
 
