@@ -4,6 +4,8 @@
 #' @param name Optional collection name when `collection` is not already a `mongo_src`.
 #' @param schema Optional character vector describing known fields.
 #' @param executor Optional executor function for compiled pipelines.
+#' @param server_version Optional MongoDB server version passed through to
+#'   [mongo_src()] when `collection` is not already a `mongo_src`.
 #'
 #' @details
 #' Supplying `schema = ...` is the most reliable way to make field references
@@ -29,11 +31,11 @@
 #'
 #' tbl
 #' @export
-tbl_mongo <- function(collection, name = NULL, schema = NULL, executor = NULL) {
+tbl_mongo <- function(collection, name = NULL, schema = NULL, executor = NULL, server_version = NULL) {
   src <- if (inherits(collection, "mongo_src")) {
     collection
   } else {
-    mongo_src(collection, name = name, schema = schema, executor = executor)
+    mongo_src(collection, name = name, schema = schema, executor = executor, server_version = server_version)
   }
 
   ir <- list(

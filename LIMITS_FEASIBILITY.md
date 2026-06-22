@@ -165,12 +165,20 @@ here. Keep the loud "not supported" error.
 
 Each phase is independently shippable and ordered by value-to-effort.
 
-### Phase 0 — Groundwork (small)
-- Add a server-feature/version capability probe on the source so version-gated
+### Phase 0 — Groundwork (small) — **implemented**
+- ~~Add a server-feature/version capability probe on the source so version-gated
   features (median, window functions) can fail with a precise
-  "requires MongoDB X.Y+" message instead of an opaque server error.
-- Extend test fixtures (`tests/testthat/helper-mock.R`) so new ops can be
-  asserted at the compiled-pipeline level without a live server.
+  "requires MongoDB X.Y+" message instead of an opaque server error.~~
+  Done in `R/server-version.R`: `mongo_src(..., server_version=)` stores or
+  probes the server version (via `buildInfo`), `mongo_server_version()` exposes
+  it, and the internal `require_server_version()` gate raises a precise
+  `mongo_tidy_unsupported` error for too-old servers (tolerating unknown
+  versions by default).
+- ~~Extend test fixtures (`tests/testthat/helper-mock.R`) so new ops can be
+  asserted at the compiled-pipeline level without a live server.~~
+  Done: the mock executor now evaluates the Phase 1 accumulators
+  (`$stdDevSamp`, `$stdDevPop`, `$first`, `$last`, `$addToSet`) and already
+  supports computed `$group._id` expressions.
 
 ### Phase 1 — Cheap, high-value relaxations
 1. **Computed `group_by()` keys** (rank 1): translate non-symbol group exprs via

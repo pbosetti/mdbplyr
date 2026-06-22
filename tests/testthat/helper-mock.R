@@ -660,7 +660,21 @@ eval_agg <- function(expr, data) {
     `$avg` = mean(values, na.rm = TRUE),
     `$min` = min(values, na.rm = TRUE),
     `$max` = max(values, na.rm = TRUE),
+    `$stdDevSamp` = stats::sd(values, na.rm = TRUE),
+    `$stdDevPop` = eval_std_dev_pop(values),
+    `$first` = values[[1L]],
+    `$last` = values[[length(values)]],
+    `$addToSet` = as.list(unique(values)),
     `$push` = values,
     stop("Unsupported aggregate in test executor: ", op, call. = FALSE)
   )
+}
+
+eval_std_dev_pop <- function(values) {
+  values <- values[!is.na(values)]
+  n <- length(values)
+  if (n == 0L) {
+    return(NA_real_)
+  }
+  sqrt(sum((values - mean(values))^2) / n)
 }
