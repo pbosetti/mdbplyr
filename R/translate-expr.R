@@ -434,6 +434,10 @@ is_mutate_sequence_expr <- function(expr) {
     expr <- rlang::get_expr(expr)
   }
 
+  if (rlang::is_call(expr, "row_number") && length(rlang::call_args(expr)) == 0L) {
+    return(TRUE)
+  }
+
   if (!rlang::is_call(expr, ":")) {
     return(FALSE)
   }

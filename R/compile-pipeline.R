@@ -112,6 +112,7 @@ compile_mutate_stages <- function(op) {
         step$type,
         computed = list(compile_add_fields_stage(stats::setNames(list(step$expr), step$field))),
         sequence = compile_sequence_stages(step$fields, step$groups),
+        window = compile_window_stage(step),
         abort_invalid("compile_pipeline()", paste("cannot compile mutate step", step$type))
       ))
     }

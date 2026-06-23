@@ -222,11 +222,22 @@ Each phase is independently shippable and ordered by value-to-effort.
    and `summarise()`. Anonymous functions and function-valued variables are not
    supported (the expansion is syntactic).
 
-### Phase 4 — Big feature
-6. **Window functions** (rank 6) via a new `$setWindowFields` op. Treat as its
-   own milestone with an upfront mini-design covering partition/order/frame
-   mapping and which dplyr window verbs are in the first cut
-   (`row_number`, `rank`, `dense_rank`, `cumsum`, `lag`, `lead`).
+### Phase 4 — Big feature — **implemented**
+6. ~~**Window functions** (rank 6) via a new `$setWindowFields` op.~~ Done in
+   `R/verbs-window.R`: window assignments in `mutate()`/`transmute()` each
+   compile to their own `$setWindowFields` stage (gated on MongoDB 5.0+ via
+   `require_server_version()`).
+   - **Partition** = current `group_by()` keys (`partitionBy`, a document for
+     multiple keys).
+   - **Order** = the ranking column for `rank`/`min_rank`/`dense_rank`
+     (`desc()` supported), otherwise the most recent `arrange()` (required, and
+     the stage reorders output by that key — a documented deviation).
+   - **First cut**: `min_rank`/`rank` → `$rank`, `dense_rank` → `$denseRank`,
+     `cumsum`/`cummean`/`cummax`/`cummin` → accumulator with an
+     `["unbounded","current"]` documents window, `lag`/`lead` → `$shift`.
+     `row_number()` aliases the existing `1:n()` sequence path.
+   - Nested window calls, `order_by=`, anonymous functions, and pre-5.0 servers
+     fail explicitly.
 
 ### Phase 5 — Design-first, defer
 7. **Joins**: write an RFC on right-hand-side representation and result shape

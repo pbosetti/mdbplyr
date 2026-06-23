@@ -72,6 +72,7 @@ devtools::install_github("pbosetti/mdbplyr", build_vignettes=TRUE)
 - `is.na()`,
 - `coalesce()`,
 - `across()` in `mutate()` / `summarise()` with name-based column selections and bare function names or `~` lambdas,
+- window functions in `mutate()` / `transmute()` (require MongoDB 5.0+): `min_rank()` / `rank()`, `dense_rank()`, `cumsum()` / `cummean()` / `cummax()` / `cummin()`, `lag()`, `lead()` (and `row_number()` as an alias for `1:n()`),
 - `1:n()` in `mutate()` / `transmute()` for row numbering,
 - `n()`, `sum()`, `mean()`, `min()`, `max()`, `sd()`, `var()`, `first()`, `last()`, `n_distinct()`,
 - `median()` and `quantile()` (require MongoDB 7.0+).
@@ -83,7 +84,8 @@ devtools::install_github("pbosetti/mdbplyr", build_vignettes=TRUE)
 - `group_by()` supports bare field names and named computed keys such as `bucket = floor(amount / 10)`,
 - `summarise()` supports only the documented aggregate functions; `median()` / `quantile()` additionally require MongoDB 7.0+,
 - `across()` supports name-based column selections with bare function names or `~` lambdas, but not `where()` or functions held in variables,
-- joins, window functions, reshaping, and write operations are out of scope.
+- window functions compile to `$setWindowFields` (MongoDB 5.0+); ranking sorts by its column argument, while cumulative and offset windows take their order from a preceding `arrange()` and reorder the output by that key,
+- joins, reshaping, and write operations are out of scope.
 
 ## Example
 
@@ -157,7 +159,8 @@ MongoDB documents are not rectangular SQL tables. Nested fields, arrays, missing
 | `across()` | Supported with caveats | Name-based selections; bare function names or `~` lambdas; no `where()` or function variables |
 | Dot-path fields | Supported with caveats | Use backticked names such as `` `user.age` `` |
 | Manual pipeline stage append | Supported with caveats | `append_stage()` appends raw JSON after generated stages and does not infer schema changes |
-| Joins/window functions | Not supported | Explicitly out of scope |
+| Window functions | Supported with caveats | `$setWindowFields` (MongoDB 5.0+); rank/dense_rank, cum*, lag/lead; ordering via the ranking column or a preceding `arrange()` |
+| Joins | Not supported | Explicitly out of scope |
 | Client-side fallback | Not supported | Unsupported features error clearly |
 
 ---

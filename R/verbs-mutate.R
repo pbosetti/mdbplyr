@@ -10,7 +10,7 @@ append_projection_fields <- function(projection, fields) {
 }
 
 #' @keywords internal
-translate_mutate_assignments <- function(quos, names_in, is_sequence, current_map, output_map, context, groups) {
+translate_mutate_assignments <- function(quos, names_in, is_sequence, is_window, current_map, output_map, context, groups, partition_by = NULL, pipeline_sort = NULL) {
   translation_map <- current_map %||% character()
   translated <- list()
   steps <- list()
@@ -24,6 +24,10 @@ translate_mutate_assignments <- function(quos, names_in, is_sequence, current_ma
         type = "sequence",
         fields = internal_name,
         groups = groups
+      )
+    } else if (isTRUE(is_window[[i]])) {
+      steps[[length(steps) + 1L]] <- build_window_step(
+        quos[[i]], internal_name, translation_map, partition_by, pipeline_sort, context
       )
     } else {
       expr <- translate_expr(quos[[i]], context = context, field_map = translation_map)
@@ -77,22 +81,33 @@ mutate.tbl_mongo <- function(.data, ...) {
   }
 
   is_sequence <- vapply(quos, is_mutate_sequence_expr, logical(1))
+  is_window <- vapply(quos, function(quo) is_window_expr(rlang::quo_get_expr(quo)), logical(1))
   if (any(is_sequence)) {
     assert_no_computed_group_partition(.data, "mutate()")
+  }
+  if (any(is_window)) {
+    require_server_version(.data, "5.0", "window functions")
   }
   current_map <- projection_mapping(.data)
   shape <- append_field_map(current_map, names_in, collect_map = .data$ir$collect_map)
   group_sources <- resolve_field_sources(.data$ir$groups, current_map)
+  partition_by <- compile_partition_by(
+    .data$ir$groups,
+    finalize_group_defs(.data$ir$groups, .data$ir$group_defs, current_map)
+  )
   internal_names <- unname(shape$field_map[names_in])
 
   translated <- translate_mutate_assignments(
     quos = quos,
     names_in = names_in,
     is_sequence = is_sequence,
+    is_window = is_window,
     current_map = current_map,
     output_map = shape$field_map,
     context = "mutate()",
-    groups = group_sources
+    groups = group_sources,
+    partition_by = partition_by,
+    pipeline_sort = .data$ir$order
   )
 
   collect_map <- .data$ir$collect_map
@@ -149,22 +164,33 @@ transmute.tbl_mongo <- function(.data, ...) {
   }
 
   is_sequence <- vapply(quos, is_mutate_sequence_expr, logical(1))
+  is_window <- vapply(quos, function(quo) is_window_expr(rlang::quo_get_expr(quo)), logical(1))
   if (any(is_sequence)) {
     assert_no_computed_group_partition(.data, "transmute()")
+  }
+  if (any(is_window)) {
+    require_server_version(.data, "5.0", "window functions")
   }
   current_map <- projection_mapping(.data)
   shape <- append_field_map(character(), names_in)
   group_sources <- resolve_field_sources(.data$ir$groups, current_map)
+  partition_by <- compile_partition_by(
+    .data$ir$groups,
+    finalize_group_defs(.data$ir$groups, .data$ir$group_defs, current_map)
+  )
   internal_names <- unname(shape$field_map[names_in])
 
   translated <- translate_mutate_assignments(
     quos = quos,
     names_in = names_in,
     is_sequence = is_sequence,
+    is_window = is_window,
     current_map = current_map,
     output_map = shape$field_map,
     context = "transmute()",
-    groups = group_sources
+    groups = group_sources,
+    partition_by = partition_by,
+    pipeline_sort = .data$ir$order
   )
 
   projection <- stats::setNames(internal_names, internal_names)
