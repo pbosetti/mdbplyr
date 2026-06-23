@@ -39,6 +39,23 @@ test_that("select still supports bare names and renames", {
   )
 })
 
+test_that("bare selections still accept nested root paths", {
+  # message.measurements is a prefix of known leaf fields, not a leaf itself;
+  # the lenient resolver must keep accepting it even though tidyselect would not.
+  tbl <- mock_tbl(tibble::tibble(
+    `message.timestamp` = 1,
+    `message.measurements.Fx` = 2,
+    `message.measurements.Fy` = 3
+  ))
+
+  selected <- dplyr::select(tbl, `message.timestamp`, `message.measurements`)
+
+  expect_equal(
+    schema_fields(selected),
+    c("message.timestamp", "message.measurements")
+  )
+})
+
 test_that("select rejects where() because column types are unknown", {
   tbl <- mock_tbl(tibble::tibble(amount = 1, status = "a"))
 

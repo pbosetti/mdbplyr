@@ -16,9 +16,17 @@ parse_projection <- function(quos, context = "select()") {
 
 #' @keywords internal
 parse_selection <- function(quos, context, fields) {
-  if (!length(fields)) {
-    # Without a known schema, fall back to explicit bare-field selection so
-    # schemaless lazy queries keep working; tidyselect needs known columns.
+  # Pure bare-symbol selections (including renames) keep the lenient direct
+  # resolver: it supports exact fields *and* nested root paths such as
+  # `message.measurements`, which are prefixes of known leaf fields rather than
+  # leaves themselves. tidyselect is only used when a selection actually relies
+  # on helpers, ranges, or negation, and then only over known leaf fields.
+  all_bare_symbols <- all(vapply(
+    quos,
+    function(quo) rlang::is_symbol(rlang::quo_get_expr(quo)),
+    logical(1)
+  ))
+  if (!length(fields) || all_bare_symbols) {
     return(parse_projection(quos, context = context))
   }
 
