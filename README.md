@@ -71,6 +71,7 @@ devtools::install_github("pbosetti/mdbplyr", build_vignettes=TRUE)
 - `case_when()`,
 - `is.na()`,
 - `coalesce()`,
+- `across()` in `mutate()` / `summarise()` with name-based column selections and bare function names or `~` lambdas,
 - `1:n()` in `mutate()` / `transmute()` for row numbering,
 - `n()`, `sum()`, `mean()`, `min()`, `max()`, `sd()`, `var()`, `first()`, `last()`, `n_distinct()`,
 - `median()` and `quantile()` (require MongoDB 7.0+).
@@ -81,7 +82,8 @@ devtools::install_github("pbosetti/mdbplyr", build_vignettes=TRUE)
 - `mutate()` and `transmute()` require named expressions and otherwise support scalar expressions except for the special `1:n()` row-numbering case,
 - `group_by()` supports bare field names and named computed keys such as `bucket = floor(amount / 10)`,
 - `summarise()` supports only the documented aggregate functions; `median()` / `quantile()` additionally require MongoDB 7.0+,
-- joins, window functions, `across()`, reshaping, and write operations are out of scope.
+- `across()` supports name-based column selections with bare function names or `~` lambdas, but not `where()` or functions held in variables,
+- joins, window functions, reshaping, and write operations are out of scope.
 
 ## Example
 
@@ -152,6 +154,7 @@ MongoDB documents are not rectangular SQL tables. Nested fields, arrays, missing
 | Scalar mutation | Supported | Conservative expression subset |
 | Grouped summaries | Supported | `n()`, `sum()`, `mean()`, `min()`, `max()`, `sd()`, `var()`, `first()`, `last()`, `n_distinct()`; `median()`/`quantile()` need MongoDB 7.0+ |
 | Computed group keys | Supported | Named expressions, e.g. `group_by(bucket = floor(amount / 10))` |
+| `across()` | Supported with caveats | Name-based selections; bare function names or `~` lambdas; no `where()` or function variables |
 | Dot-path fields | Supported with caveats | Use backticked names such as `` `user.age` `` |
 | Manual pipeline stage append | Supported with caveats | `append_stage()` appends raw JSON after generated stages and does not infer schema changes |
 | Joins/window functions | Not supported | Explicitly out of scope |

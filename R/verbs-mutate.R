@@ -66,6 +66,7 @@ translate_mutate_assignments <- function(quos, names_in, is_sequence, current_ma
 #' @export
 mutate.tbl_mongo <- function(.data, ...) {
   quos <- rlang::enquos(...)
+  quos <- expand_across_quos(quos, names(projection_mapping(.data)), "mutate()")
   if (!length(quos)) {
     return(.data)
   }
@@ -137,6 +138,7 @@ mutate.tbl_mongo <- function(.data, ...) {
 #' @export
 transmute.tbl_mongo <- function(.data, ...) {
   quos <- rlang::enquos(...)
+  quos <- expand_across_quos(quos, names(projection_mapping(.data)), "transmute()")
   if (!length(quos)) {
     return(.data)
   }

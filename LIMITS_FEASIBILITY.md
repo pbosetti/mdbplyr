@@ -210,9 +210,17 @@ Each phase is independently shippable and ordered by value-to-effort.
   translation/compilation in `translate-expr.R`; `tidyselect` added to Imports;
   mock executor `$ifNull` support; tests; README and support-matrix edits.
 
-### Phase 3 — Composition
-5. **`across()`** (rank 5) desugaring on top of Phase 2's resolver, in both
-   `mutate()` and `summarise()`.
+### Phase 3 — Composition — **implemented**
+5. ~~**`across()`** (rank 5) desugaring on top of Phase 2's resolver, in both
+   `mutate()` and `summarise()`.~~ Done in `R/verbs-across.R`:
+   `expand_across_quos()` rewrites `across(.cols, .fns)` into one named
+   assignment per (column, function) pair before the normal verb machinery
+   runs. Column selection reuses the Phase 2 tidyselect resolver (no `where()`);
+   `.fns` accepts a bare function name, a `~` lambda (with `.x`/`.`), or a named
+   list of those; `.names` glue (`{.col}`, `{.fn}`) and forwarded arguments
+   (e.g. `na.rm = TRUE`) are supported. Wired into `mutate()`, `transmute()`,
+   and `summarise()`. Anonymous functions and function-valued variables are not
+   supported (the expansion is syntactic).
 
 ### Phase 4 — Big feature
 6. **Window functions** (rank 6) via a new `$setWindowFields` op. Treat as its

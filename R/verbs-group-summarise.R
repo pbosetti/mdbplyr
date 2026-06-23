@@ -133,6 +133,7 @@ summarise.tbl_mongo <- function(.data, ..., .by = NULL, .groups = NULL) {
   }
 
   quos <- rlang::enquos(...)
+  quos <- expand_across_quos(quos, names(projection_mapping(.data)), "summarise()")
   if (!length(quos)) {
     abort_invalid("summarise()", "requires at least one summary expression.")
   }
