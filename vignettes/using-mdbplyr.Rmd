@@ -299,6 +299,181 @@ orders_tbl |>
   collect()
 ```
 
+# New in v0.4.0
+
+The features in this section were added in `mdbplyr` v0.4.0. Each heading is
+marked **(New from v0.4.0)** so it is easy to tell them apart from the
+longer-standing subset above.
+
+## Server version awareness (New from v0.4.0)
+
+`mdbplyr` now records the MongoDB server version when it can probe it, and some
+features are gated on a minimum version (for example `median()` needs 7.0+ and
+window functions need 5.0+). When the version cannot be determined it is left
+unknown and the feature is allowed through, so the server still has the final
+say.
+
+```{r new-server-version, eval = FALSE}
+# Probed automatically from a live connection, or set it explicitly:
+starwars_tbl <- tbl_mongo(
+  starwars_collection,
+  schema = names(dplyr::starwars),
+  server_version = "7.0"
+)
+
+mongo_server_version(starwars_tbl)
+```
+
+## Computed `group_by()` keys (New from v0.4.0)
+
+Grouping is no longer limited to bare field names. A **named** computed key is
+translated into the MongoDB `$group._id`.
+
+```{r new-group-computed, eval = FALSE}
+starwars_tbl |>
+  group_by(height_band = floor(height / 50) * 50) |>
+  summarise(n = n(), avg_mass = mean(mass)) |>
+  arrange(height_band) |>
+  collect()
+```
+
+## More `summarise()` accumulators (New from v0.4.0)
+
+`summarise()` gained `sd()`, `var()`, `first()`, `last()`, and `n_distinct()`,
+alongside the original `n()`, `sum()`, `mean()`, `min()`, and `max()`.
+
+```{r new-summaries, eval = FALSE}
+starwars_tbl |>
+  group_by(species) |>
+  summarise(
+    n = n(),
+    sd_height = sd(height),
+    var_mass = var(mass),
+    first_name = first(name),
+    distinct_worlds = n_distinct(homeworld)
+  ) |>
+  collect()
+```
+
+`median()` and `quantile(probs = ...)` are also supported, but compile to
+`$percentile` and therefore require **MongoDB 7.0+**:
+
+```{r new-median, eval = FALSE}
+starwars_tbl |>
+  group_by(species) |>
+  summarise(
+    median_height = median(height),
+    p90_mass = quantile(mass, probs = 0.9)
+  ) |>
+  collect()
+```
+
+## tidyselect helpers in `select()` (New from v0.4.0)
+
+When the schema is known, `select()` accepts name-based tidyselect helpers
+(`starts_with()`, `ends_with()`, `contains()`, `matches()`, `everything()`,
+`all_of()`, `any_of()`), ranges, and negation. (`where()` is intentionally not
+supported, because column types are unknown without reading data.)
+
+```{r new-select-tidyselect, eval = FALSE}
+starwars_tbl |>
+  select(name, starts_with("home"), ends_with("_color")) |>
+  collect()
+
+# Drop columns with negation, or select from a character vector:
+starwars_tbl |>
+  select(-ends_with("_color")) |>
+  collect()
+
+cols <- c("name", "height", "mass")
+starwars_tbl |>
+  select(all_of(cols)) |>
+  collect()
+```
+
+Pure bare-name selections still work exactly as before, including nested root
+paths such as `` `message.measurements` ``.
+
+## `coalesce()` (New from v0.4.0)
+
+`coalesce()` compiles to `$ifNull`, returning the first non-missing value.
+
+```{r new-coalesce, eval = FALSE}
+starwars_tbl |>
+  mutate(world = coalesce(homeworld, "unknown")) |>
+  select(name, world) |>
+  collect()
+```
+
+## `across()` (New from v0.4.0)
+
+`across()` works in both `mutate()` and `summarise()`. It expands a column
+selection and a function spec into one assignment per (column, function) pair.
+`.fns` accepts a bare function name, a `~` lambda (using `.x`), or a named list
+of those, and `.names` glue (`{.col}`, `{.fn}`) controls the output names.
+
+```{r new-across-summarise, eval = FALSE}
+# One aggregate over several columns
+starwars_tbl |>
+  group_by(species) |>
+  summarise(across(c(height, mass), mean, na.rm = TRUE)) |>
+  collect()
+
+# A named list of aggregates -> {.col}_{.fn} output names
+starwars_tbl |>
+  group_by(species) |>
+  summarise(across(c(height, mass), list(avg = mean, max = max))) |>
+  collect()
+```
+
+```{r new-across-mutate, eval = FALSE}
+# A lambda applied to each selected column, with custom output names
+starwars_tbl |>
+  mutate(across(c(height, mass), ~ .x / 100, .names = "{.col}_scaled")) |>
+  select(name, height_scaled, mass_scaled) |>
+  collect()
+```
+
+## Window functions (New from v0.4.0)
+
+Window functions in `mutate()` / `transmute()` compile to MongoDB
+`$setWindowFields` and therefore require **MongoDB 5.0+**. They partition by the
+current `group_by()` keys.
+
+Ranking functions take the column to order by (optionally wrapped in `desc()`):
+
+```{r new-window-rank, eval = FALSE}
+starwars_tbl |>
+  group_by(species) |>
+  mutate(height_rank = min_rank(desc(height))) |>
+  select(name, species, height, height_rank) |>
+  collect()
+```
+
+Cumulative and offset windows take their order from a preceding `arrange()`
+(and the stage reorders the output by that key):
+
+```{r new-window-cumulative, eval = FALSE}
+starwars_tbl |>
+  arrange(height) |>
+  mutate(cumulative_mass = cumsum(mass)) |>
+  select(name, height, mass, cumulative_mass) |>
+  collect()
+```
+
+```{r new-window-offset, eval = FALSE}
+starwars_tbl |>
+  arrange(height) |>
+  mutate(
+    prev_height = lag(height),
+    next_height = lead(height, default = 0)
+  ) |>
+  select(name, height, prev_height, next_height) |>
+  collect()
+```
+
+`row_number()` is available as an alias for the existing `1:n()` row-numbering.
+
 # Notes
 
 The examples above stay within the currently supported subset:
@@ -306,10 +481,12 @@ The examples above stay within the currently supported subset:
 - explicit field references,
 - schema-first expression resolution, with `.data$...` for explicit field references and `.env$...` for local values,
 - scalar expressions for `mutate()` and `transmute()`, plus the special `1:n()` row-numbering case,
-- conservative grouped summaries,
+- conservative grouped summaries, including computed group keys and the extended accumulator set (v0.4.0),
+- name-based tidyselect helpers and `across()` in `select()`/`mutate()`/`summarise()` (v0.4.0),
+- window functions via `$setWindowFields` (v0.4.0),
 - explicit flattening of nested object fields with `flatten_fields()`,
 - array row expansion with `unwind_array()`,
-- no joins, window functions, or automatic client-side fallback.
+- no joins, reshaping, or automatic client-side fallback.
 
 If a query falls outside that subset, `mdbplyr` is designed to fail
 explicitly rather than guess or silently change execution semantics.
