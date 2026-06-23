@@ -76,6 +76,9 @@ mutate.tbl_mongo <- function(.data, ...) {
   }
 
   is_sequence <- vapply(quos, is_mutate_sequence_expr, logical(1))
+  if (any(is_sequence)) {
+    assert_no_computed_group_partition(.data, "mutate()")
+  }
   current_map <- projection_mapping(.data)
   shape <- append_field_map(current_map, names_in, collect_map = .data$ir$collect_map)
   group_sources <- resolve_field_sources(.data$ir$groups, current_map)
@@ -144,6 +147,9 @@ transmute.tbl_mongo <- function(.data, ...) {
   }
 
   is_sequence <- vapply(quos, is_mutate_sequence_expr, logical(1))
+  if (any(is_sequence)) {
+    assert_no_computed_group_partition(.data, "transmute()")
+  }
   current_map <- projection_mapping(.data)
   shape <- append_field_map(character(), names_in)
   group_sources <- resolve_field_sources(.data$ir$groups, current_map)

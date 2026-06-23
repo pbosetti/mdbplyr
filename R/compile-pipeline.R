@@ -271,16 +271,29 @@ compile_projection_stage <- function(projection) {
 #' @keywords internal
 compile_group_stage <- function(ir) {
   groups <- ir$groups %||% character()
-  group_sources <- ir$group_sources %||% stats::setNames(groups, groups)
 
   id_stage <- if (length(groups) == 0) {
     NULL
+  } else if (!is.null(ir$group_defs)) {
+    stats::setNames(lapply(groups, function(group) compile_group_key(ir$group_defs[[group]])), groups)
   } else {
+    group_sources <- ir$group_sources %||% stats::setNames(groups, groups)
     stats::setNames(lapply(unname(group_sources), field_reference), names(group_sources))
   }
 
   summaries <- lapply(ir$summaries, compile_agg)
   c(list(`_id` = id_stage), summaries)
+}
+
+#' @keywords internal
+compile_group_key <- function(def) {
+  if (is.null(def)) {
+    abort_invalid("compile_pipeline()", "encountered a group key without a definition.")
+  }
+  if (identical(def$type, "expr")) {
+    return(compile_mongo_expr(def$expr))
+  }
+  field_reference(def$source)
 }
 
 #' @keywords internal
@@ -293,7 +306,7 @@ compile_summary_projection <- function(ir) {
     }
   }
   for (name in names(ir$summaries)) {
-    stage[[name]] <- 1L
+    stage[[name]] <- compile_summary_value(name, ir$summaries[[name]])
   }
   stage
 }

@@ -180,14 +180,20 @@ Each phase is independently shippable and ordered by value-to-effort.
   (`$stdDevSamp`, `$stdDevPop`, `$first`, `$last`, `$addToSet`) and already
   supports computed `$group._id` expressions.
 
-### Phase 1 — Cheap, high-value relaxations
-1. **Computed `group_by()` keys** (rank 1): translate non-symbol group exprs via
-   `translate_expr()`; thread into `compile_group_stage()` `_id`.
-2. **Extra accumulators** (rank 2): `sd`, `var`, `first`, `last`, `n_distinct`;
-   add `median`/`quantile` behind the version gate.
+### Phase 1 — Cheap, high-value relaxations — **implemented**
+1. ~~**Computed `group_by()` keys** (rank 1): translate non-symbol group exprs via
+   `translate_expr()`; thread into `compile_group_stage()` `_id`.~~ Done: named
+   computed keys (e.g. `group_by(bucket = floor(amount / 10))`) translate into
+   `$group._id`; unnamed computed keys fail explicitly, and `1:n()` row numbering
+   after a computed key is rejected.
+2. ~~**Extra accumulators** (rank 2): `sd`, `var`, `first`, `last`, `n_distinct`;
+   add `median`/`quantile` behind the version gate.~~ Done: `sd`→`$stdDevSamp`,
+   `var`→`$stdDevSamp` squared in the summary projection, `first`/`last`,
+   `n_distinct`→`$addToSet`+`$size`, and `median`/`quantile`→`$percentile`
+   (gated on MongoDB 7.0+ via `require_server_version()`).
 - Deliverables: updated `translate-agg.R`, `verbs-group-summarise.R`,
-  `compile-pipeline.R`; new tests; README "Supported expressions"/"limits" and
-  support-matrix edits.
+  `verbs-mutate.R`, `compile-pipeline.R`; new tests; README "Supported
+  expressions"/"limits" and support-matrix edits.
 
 ### Phase 2 — Selection ergonomics
 3. **tidyselect helpers** in `select()`/`rename()` (rank 3), name-based first;
