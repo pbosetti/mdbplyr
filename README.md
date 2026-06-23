@@ -70,13 +70,14 @@ devtools::install_github("pbosetti/mdbplyr", build_vignettes=TRUE)
 - `if_else()`,
 - `case_when()`,
 - `is.na()`,
+- `coalesce()`,
 - `1:n()` in `mutate()` / `transmute()` for row numbering,
 - `n()`, `sum()`, `mean()`, `min()`, `max()`, `sd()`, `var()`, `first()`, `last()`, `n_distinct()`,
 - `median()` and `quantile()` (require MongoDB 7.0+).
 
 ### Current limits
 
-- `select()` and `rename()` currently support only explicit bare field names,
+- `select()` supports bare names, renames, and name-based tidyselect helpers (`starts_with()`, `ends_with()`, `contains()`, `matches()`, `everything()`, `all_of()`, `any_of()`, ranges, negation) when the schema is known, but not `where()`; `rename()` supports explicit bare field renames only,
 - `mutate()` and `transmute()` require named expressions and otherwise support scalar expressions except for the special `1:n()` row-numbering case,
 - `group_by()` supports bare field names and named computed keys such as `bucket = floor(amount / 10)`,
 - `summarise()` supports only the documented aggregate functions; `median()` / `quantile()` additionally require MongoDB 7.0+,
@@ -147,7 +148,7 @@ MongoDB documents are not rectangular SQL tables. Nested fields, arrays, missing
 | Lazy query state | Supported | Verbs update internal IR only |
 | Pipeline inspection | Supported | `show_query()` renders compiled JSON |
 | Flat-field filters | Supported | Uses `$match` + `$expr` |
-| Projection and rename | Supported with caveats | Explicit bare field names only |
+| Projection and rename | Supported with caveats | `select()` adds name-based tidyselect helpers (no `where()`); `rename()` is bare renames |
 | Scalar mutation | Supported | Conservative expression subset |
 | Grouped summaries | Supported | `n()`, `sum()`, `mean()`, `min()`, `max()`, `sd()`, `var()`, `first()`, `last()`, `n_distinct()`; `median()`/`quantile()` need MongoDB 7.0+ |
 | Computed group keys | Supported | Named expressions, e.g. `group_by(bucket = floor(amount / 10))` |

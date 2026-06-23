@@ -415,6 +415,16 @@ translate_expr <- function(expr, context = "scalar", env = NULL, fields = NULL, 
     return(list(type = "is_na", arg = translate_expr(args[[1]], context = context, env = env, fields = fields, field_map = field_map)))
   }
 
+  if (identical(fn, "coalesce")) {
+    if (length(args) < 2) {
+      abort_invalid("coalesce()", "requires at least two arguments.")
+    }
+    return(list(
+      type = "coalesce",
+      args = lapply(args, function(arg) translate_expr(arg, context = context, env = env, fields = fields, field_map = field_map))
+    ))
+  }
+
   abort_unsupported(context, expr)
 }
 
@@ -471,6 +481,17 @@ compile_mongo_expr <- function(expr) {
       default = compile_mongo_expr(expr$default)
     )),
     is_na = list(`$eq` = list(compile_mongo_expr(expr$arg), NULL)),
+    coalesce = compile_coalesce(expr$args),
     abort_invalid("compile_mongo_expr()", paste("cannot compile expression type", expr$type))
   )
+}
+
+#' @keywords internal
+compile_coalesce <- function(args) {
+  compiled <- lapply(args, compile_mongo_expr)
+  acc <- compiled[[length(compiled)]]
+  for (i in rev(seq_len(length(compiled) - 1L))) {
+    acc <- list(`$ifNull` = list(compiled[[i]], acc))
+  }
+  acc
 }

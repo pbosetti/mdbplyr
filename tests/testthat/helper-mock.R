@@ -451,6 +451,7 @@ eval_expr <- function(expr, data) {
     `$size` = eval_size(args[[1]], data),
     `$round` = round(eval_expr(args[[1]], data), args[[2]]),
     `$cond` = ifelse(eval_expr(args$`if`, data), eval_expr(args$then, data), eval_expr(args$`else`, data)),
+    `$ifNull` = eval_if_null(args, data),
     `$switch` = eval_switch(args, data),
     stop("Unsupported expression in test executor: ", op, call. = FALSE)
   )
@@ -464,6 +465,15 @@ compare_expr <- function(lhs, rhs, comparator) {
     return(is.na(rhs))
   }
   comparator(lhs, rhs)
+}
+
+eval_if_null <- function(args, data) {
+  primary <- eval_expr(args[[1]], data)
+  replacement <- eval_expr(args[[2]], data)
+  if (is.null(primary)) {
+    return(replacement)
+  }
+  ifelse(is.na(primary), replacement, primary)
 }
 
 eval_switch <- function(spec, data) {

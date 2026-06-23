@@ -16,7 +16,8 @@ Imports:
     dplyr,
     jsonlite,
     rlang,
-    tibble
+    tibble,
+    tidyselect
 Suggests:
     knitr,
     mongolite,

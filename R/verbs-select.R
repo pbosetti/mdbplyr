@@ -14,10 +14,55 @@ parse_projection <- function(quos, context = "select()") {
   as_named_character(unlist(specs, use.names = TRUE))
 }
 
+#' @keywords internal
+parse_selection <- function(quos, context, fields) {
+  if (!length(fields)) {
+    # Without a known schema, fall back to explicit bare-field selection so
+    # schemaless lazy queries keep working; tidyselect needs known columns.
+    return(parse_projection(quos, context = context))
+  }
+
+  for (quo in quos) {
+    if (expr_uses_where(rlang::quo_get_expr(quo))) {
+      abort_unsupported(
+        context, rlang::quo_get_expr(quo),
+        "where() selections are not supported because column types are unknown without reading data."
+      )
+    }
+  }
+
+  proxy <- tibble::as_tibble(
+    stats::setNames(rep(list(logical()), length(fields)), fields),
+    .name_repair = "minimal"
+  )
+  loc <- tidyselect::eval_select(rlang::expr(c(!!!quos)), data = proxy)
+  as_named_character(stats::setNames(fields[loc], names(loc)))
+}
+
+#' @keywords internal
+expr_uses_where <- function(expr) {
+  if (rlang::is_call(expr)) {
+    nm <- tryCatch(rlang::call_name(expr), error = function(...) NULL)
+    if (identical(nm, "where")) {
+      return(TRUE)
+    }
+    for (arg in rlang::call_args(expr)) {
+      if (expr_uses_where(arg)) {
+        return(TRUE)
+      }
+    }
+  }
+  FALSE
+}
+
 #' Select fields from a lazy Mongo query
 #'
 #' @param .data A `tbl_mongo` object.
-#' @param ... Bare field names or `new_name = old_name` renames.
+#' @param ... Field selections. Bare field names, `new_name = old_name`
+#'   renames, and name-based tidyselect helpers (`starts_with()`, `ends_with()`,
+#'   `contains()`, `matches()`, `everything()`, `all_of()`, `any_of()`, ranges,
+#'   and negation) are supported when the schema is known. `where()` is not
+#'   supported because column types are unknown without reading data.
 #'
 #' @details
 #' Selecting a dotted field path such as `` `message.measurements.Fx` `` does
@@ -34,12 +79,13 @@ parse_projection <- function(quos, context = "select()") {
 #' )
 #'
 #' dplyr::select(tbl, amount)
+#' dplyr::select(tbl, dplyr::starts_with("am"))
 #' @rdname mongo_select
 #' @export
 select.tbl_mongo <- function(.data, ...) {
   quos <- rlang::enquos(...)
-  visible_sources <- parse_projection(quos, context = "select()")
   current_map <- projection_mapping(.data)
+  visible_sources <- parse_selection(quos, context = "select()", fields = names(current_map))
   identity_select <- is.null(.data$ir$collect_map) &&
     all(names(visible_sources) == unname(visible_sources)) &&
     all(resolve_field_sources(unname(visible_sources), current_map) == unname(visible_sources))

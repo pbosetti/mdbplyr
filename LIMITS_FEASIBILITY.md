@@ -195,12 +195,20 @@ Each phase is independently shippable and ordered by value-to-effort.
   `verbs-mutate.R`, `compile-pipeline.R`; new tests; README "Supported
   expressions"/"limits" and support-matrix edits.
 
-### Phase 2 — Selection ergonomics
-3. **tidyselect helpers** in `select()`/`rename()` (rank 3), name-based first;
-   defer `where()`.
-4. Begin demand-driven **scalar function** additions in `mutate()` (rank 4).
-- Deliverables: `parse_projection()` rework to a tidyselect resolver; tests for
-  each helper; docs.
+### Phase 2 — Selection ergonomics — **implemented**
+3. ~~**tidyselect helpers** in `select()`/`rename()` (rank 3), name-based first;
+   defer `where()`.~~ Done: `select()` routes through `tidyselect::eval_select()`
+   via the new `parse_selection()` resolver, supporting `starts_with()`,
+   `ends_with()`, `contains()`, `matches()`, `everything()`, `all_of()`,
+   `any_of()`, ranges, and negation when the schema is known. `where()` is
+   rejected explicitly (column types are unknown without reading data), and
+   schemaless queries fall back to explicit bare-name selection. `rename()`
+   stays on bare renames (dplyr does not take selection helpers there).
+4. ~~Begin demand-driven **scalar function** additions in `mutate()` (rank 4).~~
+   Started with `coalesce()` → nested `$ifNull`.
+- Deliverables: `parse_selection()` resolver in `verbs-select.R`; `coalesce`
+  translation/compilation in `translate-expr.R`; `tidyselect` added to Imports;
+  mock executor `$ifNull` support; tests; README and support-matrix edits.
 
 ### Phase 3 — Composition
 5. **`across()`** (rank 5) desugaring on top of Phase 2's resolver, in both
