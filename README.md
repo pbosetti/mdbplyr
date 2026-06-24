@@ -122,21 +122,16 @@ When field metadata is not discoverable from the collection object, pass `schema
 
 ---
 
-## Project Goal
 
-The package should provide:
+## Design Position
+
+The package provides:
 
 - lazy query composition,
 - tidy evaluation,
 - translation of supported verbs into MongoDB aggregation stages,
 - query inspection,
 - explicit and predictable failure for unsupported operations.
-
-The package should **not** aim to deliver full `dplyr` compatibility over arbitrary MongoDB collections.
-
----
-
-## Design Position
 
 This project should be framed as:
 
@@ -147,6 +142,8 @@ It should **not** be framed as:
 > a complete `dbplyr` equivalent for MongoDB.
 
 MongoDB documents are not rectangular SQL tables. Nested fields, arrays, missing keys, heterogeneous schemas, and document-oriented semantics require a backend that is native to MongoDB rather than adapted from SQL assumptions.
+
+For these reasons, the package can **not** aim to deliver full `dplyr` compatibility over arbitrary MongoDB collections.
 
 ---
 
