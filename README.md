@@ -22,11 +22,11 @@ The package is intentionally conservative:
 
 ## Install
 
-The package is still in its initial development phase. While it is under testing and not available on CRAN, you can install it with:
+You can install the package from CRAN with `install.package("mdbplyr")`. If you rather want the latest version from GitHub:
 
 ```R
-install.package("devtools")
-devtools::install_github("pbosetti/mdbplyr", build_vignettes=TRUE)
+install.package(c("devtools", "remotes", "knitr", "rmarkdown"))
+remotes::install_github("pbosetti/mdbplyr", build_vignettes = TRUE)
 ```
 
 ## Current implemented subset
