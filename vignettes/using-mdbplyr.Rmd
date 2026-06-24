@@ -474,6 +474,47 @@ starwars_tbl |>
 
 `row_number()` is available as an alias for the existing `1:n()` row-numbering.
 
+## Joins (New from v0.4.0)
+
+`inner_join()`, `left_join()`, `semi_join()`, and `anti_join()` compile to
+MongoDB `$lookup` against another collection in the same database. The
+right-hand side must be a plain `tbl_mongo` (a collection reference with a known
+schema and no lazy operations).
+
+```{r new-join-setup, eval = FALSE}
+films_tbl <- tbl_mongo(
+  mongolite::mongo(collection = "films", db = "mdbplyr"),
+  schema = c("film_id", "title", "director")
+)
+```
+
+A mutating join flattens the match by default (one row per matched pair, with
+colliding columns suffixed):
+
+```{r new-join-inner, eval = FALSE}
+appearances_tbl |>
+  inner_join(films_tbl, by = "film_id") |>
+  collect()
+```
+
+`left_join()` keeps unmatched left rows. Filtering joins keep the left columns
+and only test whether a match exists:
+
+```{r new-join-semi, eval = FALSE}
+appearances_tbl |>
+  semi_join(films_tbl, by = c("movie_id" = "film_id")) |>
+  collect()
+```
+
+Pass `unnest = FALSE` to keep the matched documents as a native nested array
+column instead of flattening them:
+
+```{r new-join-nested, eval = FALSE}
+appearances_tbl |>
+  left_join(films_tbl, by = "film_id", unnest = FALSE) |>
+  collect()
+```
+
 # Notes
 
 The examples above stay within the currently supported subset:
@@ -484,9 +525,10 @@ The examples above stay within the currently supported subset:
 - conservative grouped summaries, including computed group keys and the extended accumulator set (v0.4.0),
 - name-based tidyselect helpers and `across()` in `select()`/`mutate()`/`summarise()` (v0.4.0),
 - window functions via `$setWindowFields` (v0.4.0),
+- `inner_join()` / `left_join()` / `semi_join()` / `anti_join()` via `$lookup` against a plain right-hand `tbl_mongo` (v0.4.0),
 - explicit flattening of nested object fields with `flatten_fields()`,
 - array row expansion with `unwind_array()`,
-- no joins, reshaping, or automatic client-side fallback.
+- no reshaping, writes, or automatic client-side fallback.
 
 If a query falls outside that subset, `mdbplyr` is designed to fail
 explicitly rather than guess or silently change execution semantics.

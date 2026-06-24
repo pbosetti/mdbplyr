@@ -93,6 +93,7 @@ compile_ir_op <- function(op) {
       list(path = field_reference(op$field_source)),
       if (isTRUE(op$preserve_empty)) list(preserveNullAndEmptyArrays = TRUE) else list()
     ))),
+    join = op$stages,
     abort_invalid("compile_pipeline()", paste("cannot compile op", op$type))
   )
 }

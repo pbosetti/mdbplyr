@@ -19,7 +19,11 @@ register_tbl_mongo_methods <- function() {
     "slice_head",
     "slice_tail",
     "summarise",
-    "transmute"
+    "transmute",
+    "inner_join",
+    "left_join",
+    "semi_join",
+    "anti_join"
   )
 
   dplyr_ns <- asNamespace("dplyr")

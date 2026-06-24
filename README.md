@@ -54,6 +54,10 @@ devtools::install_github("pbosetti/mdbplyr", build_vignettes=TRUE)
 - `slice_head()`
 - `slice_tail()`
 - `head()`
+- `inner_join()`
+- `left_join()`
+- `semi_join()`
+- `anti_join()`
 
 ### Supported expressions
 
@@ -85,7 +89,8 @@ devtools::install_github("pbosetti/mdbplyr", build_vignettes=TRUE)
 - `summarise()` supports only the documented aggregate functions; `median()` / `quantile()` additionally require MongoDB 7.0+,
 - `across()` supports name-based column selections with bare function names or `~` lambdas, but not `where()` or functions held in variables,
 - window functions compile to `$setWindowFields` (MongoDB 5.0+); ranking sorts by its column argument, while cumulative and offset windows take their order from a preceding `arrange()` and reorder the output by that key,
-- joins, reshaping, and write operations are out of scope.
+- `inner_join()` / `left_join()` / `semi_join()` / `anti_join()` compile to `$lookup`; the right-hand side must be a plain `tbl_mongo` (a collection reference with a known schema) in the same database,
+- reshaping and write operations are out of scope.
 
 ## Example
 
@@ -160,7 +165,8 @@ MongoDB documents are not rectangular SQL tables. Nested fields, arrays, missing
 | Dot-path fields | Supported with caveats | Use backticked names such as `` `user.age` `` |
 | Manual pipeline stage append | Supported with caveats | `append_stage()` appends raw JSON after generated stages and does not infer schema changes |
 | Window functions | Supported with caveats | `$setWindowFields` (MongoDB 5.0+); rank/dense_rank, cum*, lag/lead; ordering via the ranking column or a preceding `arrange()` |
-| Joins | Not supported | Explicitly out of scope |
+| Joins | Supported with caveats | `inner`/`left`/`semi`/`anti` via `$lookup`; plain right-hand `tbl_mongo`, same database; flattened by default or nested with `unnest = FALSE` |
+| Reshaping / writes | Not supported | Explicitly out of scope |
 | Client-side fallback | Not supported | Unsupported features error clearly |
 
 ---
@@ -211,6 +217,9 @@ Typical verb mappings are:
 - `group_by()` + `summarise()` -> `$group`
 - `slice_head()` / `head()` -> `$limit` or array-slicing stages for negative `n`
 - `slice_tail()` -> array-slicing stages
+- window functions in `mutate()` -> `$setWindowFields`
+- `inner_join()` / `left_join()` -> `$lookup` (+ `$unwind` + `$replaceRoot`)
+- `semi_join()` / `anti_join()` -> `$lookup` + `$match` on match count
 
 This mapping should be documented, inspectable, and testable.
 

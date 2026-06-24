@@ -239,11 +239,26 @@ Each phase is independently shippable and ordered by value-to-effort.
    - Nested window calls, `order_by=`, anonymous functions, and pre-5.0 servers
      fail explicitly.
 
-### Phase 5 — Design-first, defer
-7. **Joins**: write an RFC on right-hand-side representation and result shape
-   before implementing `$lookup`.
-8. **Reshaping** and **writes**: keep out of scope; document the rationale so
-   the boundary is intentional, not accidental.
+### Phase 5 — Joins — **implemented (joins only)**
+7. ~~**Joins**: write an RFC on right-hand-side representation and result shape
+   before implementing `$lookup`.~~ Done in `R/verbs-join.R`. Design decisions
+   (the RFC, settled with the maintainer):
+   - **Right-hand side** = a plain `tbl_mongo` (a collection reference with a
+     known schema and no lazy ops), so foreign keys and column collisions
+     resolve from its schema. A transformed RHS fails explicitly.
+   - **Result shape** = both: flattened by default (`$lookup` + `$unwind` +
+     `$replaceRoot`, one row per matched pair, colliding columns suffixed),
+     or a native nested array column with `unnest = FALSE`.
+   - **Verbs** = `inner_join`/`left_join` (mutating) and `semi_join`/`anti_join`
+     (filtering, via `$lookup` + a matched-array-size `$match`).
+   - Multi-key and named/natural `by` are supported; `$lookup` uses a
+     `let` + `pipeline` equality match. `from` is a same-database collection
+     name; cross-database joins, `join_by()`, `keep = TRUE`, and `right`/`full`
+     joins are not supported (and fail explicitly).
+8. **Reshaping** and **writes**: kept out of scope by design. `pivot_*` output
+   columns depend on data values (breaking lazy/known-schema compilation), and
+   writes contradict the read-only analytical thesis. Both fail as unsupported
+   verbs rather than being emulated.
 
 ## Cross-cutting requirements for every phase
 
@@ -254,5 +269,3 @@ Each phase is independently shippable and ordered by value-to-effort.
   compiled-pipeline assertions for every new op.
 - Update the **README support matrix and limits list** in lockstep so docs never
   overstate or understate capability.
-</content>
-</invoke>
