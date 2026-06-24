@@ -9,7 +9,8 @@ mongo_src(
   name = NULL,
   schema = NULL,
   executor = NULL,
-  cursor_executor = NULL
+  cursor_executor = NULL,
+  server_version = NULL
 )
 }
 \arguments{
@@ -23,6 +24,10 @@ mongo_src(
 
 \item{cursor_executor}{Optional function used to open a cursor over compiled
 pipelines.}
+
+\item{server_version}{Optional MongoDB server version (for example \code{"7.0"}).
+When omitted, the version is probed from the connected server with
+\code{buildInfo}; test doubles that cannot answer the probe leave it unknown.}
 }
 \value{
 A \code{mongo_src} object.
