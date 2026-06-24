@@ -4,7 +4,13 @@
 \alias{tbl_mongo}
 \title{Create a lazy MongoDB table}
 \usage{
-tbl_mongo(collection, name = NULL, schema = NULL, executor = NULL)
+tbl_mongo(
+  collection,
+  name = NULL,
+  schema = NULL,
+  executor = NULL,
+  server_version = NULL
+)
 }
 \arguments{
 \item{collection}{A \code{mongo_src} object or a \code{mongolite::mongo()}-like object.}
@@ -14,6 +20,9 @@ tbl_mongo(collection, name = NULL, schema = NULL, executor = NULL)
 \item{schema}{Optional character vector describing known fields.}
 
 \item{executor}{Optional executor function for compiled pipelines.}
+
+\item{server_version}{Optional MongoDB server version passed through to
+\code{\link[=mongo_src]{mongo_src()}} when \code{collection} is not already a \code{mongo_src}.}
 }
 \value{
 A \code{tbl_mongo} object.
