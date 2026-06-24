@@ -13,9 +13,14 @@
 /*.tar.gz
 /*.Rcheck/
 /..Rcheck/
+/build/
+/inst/doc/
 *.Rout
 *.Rout.fail
 *.Rout.save
+
+# Stale nested package copy (generated, must not be committed)
+/mdbplyr/
 
 # Vignette build outputs
 /Meta/
