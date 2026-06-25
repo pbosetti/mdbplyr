@@ -1,0 +1,7 @@
+bibentry(
+  bibtype = "misc",
+  title = "mdbplyr: A dplyr Interface to MongoDB for Managing and Analyzing Data in R, the tidy way",
+  author = "Paolo Bosetti",
+  year = "2026",
+  howpublished = "\\url{https://github.com/pbosetti/mdbplyr}"
+)
