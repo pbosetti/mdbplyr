@@ -35,7 +35,7 @@ compile_pipeline <- function(x) {
     predicate <- if (length(ir$filters) == 1) {
       compile_mongo_expr(ir$filters[[1]])
     } else {
-      list(`$and` = lapply(ir$filters, compile_mongo_expr))
+      list(`$and` = unname(lapply(ir$filters, compile_mongo_expr)))
     }
     stages[[length(stages) + 1]] <- list(`$match` = list(`$expr` = predicate))
   }
@@ -141,7 +141,7 @@ compile_filter_expr <- function(predicates) {
     return(compile_mongo_expr(predicates[[1]]))
   }
 
-  list(`$and` = lapply(predicates, compile_mongo_expr))
+  list(`$and` = unname(lapply(predicates, compile_mongo_expr)))
 }
 
 #' @keywords internal

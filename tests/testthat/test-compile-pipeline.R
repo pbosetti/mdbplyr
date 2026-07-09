@@ -15,6 +15,19 @@ test_that("compile_pipeline orders stages conservatively", {
   expect_equal(pipeline[[4]]$`$group`$total, list(`$sum` = "$y"))
 })
 
+test_that("multi-predicate filter() compiles $and as an array, not an object", {
+  tbl <- mock_tbl(tibble::tibble(x = 1:5, y = 5:1)) |>
+    dplyr::filter(x > 1, y > 1)
+
+  pipeline <- compile_pipeline(tbl)
+  and_args <- pipeline[[1]]$`$match`$`$expr`$`$and`
+
+  # A named list (even with non-empty names) serialises to a JSON object
+  # rather than an array; MongoDB's $and requires a genuine array.
+  expect_null(names(and_args))
+  expect_true(grepl('"$and":[', pipeline_to_json(pipeline, pretty = FALSE), fixed = TRUE))
+})
+
 test_that("append_stage appends manual stages after generated pipeline", {
   tbl <- mock_tbl(tibble::tibble(x = 1:3, y = 4:6)) |>
     dplyr::filter(x > 1) |>

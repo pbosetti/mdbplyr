@@ -470,6 +470,9 @@ compare_expr <- function(lhs, rhs, comparator) {
 eval_if_null <- function(args, data) {
   primary <- eval_expr(args[[1]], data)
   replacement <- eval_expr(args[[2]], data)
+  if (is.null(replacement)) {
+    replacement <- rep(NA, nrow(data))
+  }
   if (is.null(primary)) {
     return(replacement)
   }

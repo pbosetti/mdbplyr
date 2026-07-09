@@ -484,7 +484,7 @@ compile_mongo_expr <- function(expr) {
       }),
       default = compile_mongo_expr(expr$default)
     )),
-    is_na = list(`$eq` = list(compile_mongo_expr(expr$arg), NULL)),
+    is_na = list(`$eq` = list(list(`$ifNull` = list(compile_mongo_expr(expr$arg), NULL)), NULL)),
     coalesce = compile_coalesce(expr$args),
     abort_invalid("compile_mongo_expr()", paste("cannot compile expression type", expr$type))
   )
