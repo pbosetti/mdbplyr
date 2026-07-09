@@ -29,9 +29,30 @@ test_that("compiled comparison operators serialize as Mongo arrays", {
   compiled <- mdbplyr:::compile_mongo_expr(expr)
   rendered <- jsonlite::toJSON(compiled, auto_unbox = TRUE, pretty = TRUE, null = "null")
 
-  expect_null(names(compiled$`$gt`))
+  expect_null(names(unguard_na(compiled)$`$gt`))
   expect_match(rendered, "\\$gt\": \\[")
   expect_no_match(rendered, "\"1\":")
+})
+
+test_that("comparisons against a field carry an NA-propagation guard", {
+  expr <- mdbplyr:::translate_expr(rlang::quo(x < 100), context = "predicate", fields = "x")
+  compiled <- mdbplyr:::compile_mongo_expr(expr)
+
+  # {$cond: {if: <x is missing/null>, then: null, else: {$lt: [$x, 100]}}}
+  expect_equal(names(compiled), "$cond")
+  expect_null(compiled$`$cond`$then)
+  expect_equal(
+    compiled$`$cond`$`if`,
+    list(`$eq` = list(list(`$ifNull` = list("$x", NULL)), NULL))
+  )
+  expect_equal(compiled$`$cond`$`else`, list(`$lt` = list("$x", 100)))
+})
+
+test_that("comparisons between two literals compile unguarded", {
+  expr <- mdbplyr:::translate_expr(rlang::quo(1 < 2), context = "predicate")
+  compiled <- mdbplyr:::compile_mongo_expr(expr)
+
+  expect_equal(compiled, list(`$lt` = list(1, 2)))
 })
 
 test_that("compiled extended operators keep literal vectors and array syntax", {
@@ -49,7 +70,7 @@ test_that("bare symbols fall back to local values when not in schema", {
   expr <- mdbplyr:::translate_expr(rlang::quo(amount > x), context = "predicate", fields = "amount")
   compiled <- mdbplyr:::compile_mongo_expr(expr)
 
-  expect_equal(compiled$`$gt`, list("$amount", 10))
+  expect_equal(unguard_na(compiled)$`$gt`, list("$amount", 10))
 })
 
 test_that("explicit .data and .env pronouns override ambiguity", {
@@ -58,7 +79,7 @@ test_that("explicit .data and .env pronouns override ambiguity", {
   expr <- mdbplyr:::translate_expr(rlang::quo(.data$x > .env$x), context = "predicate", fields = "x")
   compiled <- mdbplyr:::compile_mongo_expr(expr)
 
-  expect_equal(compiled$`$gt`, list("$x", 10))
+  expect_equal(unguard_na(compiled)$`$gt`, list("$x", 10))
 })
 
 test_that("ambiguous bare names keep field precedence", {
@@ -67,7 +88,7 @@ test_that("ambiguous bare names keep field precedence", {
   expr <- mdbplyr:::translate_expr(rlang::quo(x > 1), context = "predicate", fields = "x")
   compiled <- mdbplyr:::compile_mongo_expr(expr)
 
-  expect_equal(compiled$`$gt`, list("$x", 1))
+  expect_equal(unguard_na(compiled)$`$gt`, list("$x", 1))
 })
 
 test_that("local-only subexpressions inline as literals", {
@@ -76,7 +97,7 @@ test_that("local-only subexpressions inline as literals", {
   expr <- mdbplyr:::translate_expr(rlang::quo(amount > x + 1), context = "predicate", fields = "amount")
   compiled <- mdbplyr:::compile_mongo_expr(expr)
 
-  expect_equal(compiled$`$gt`, list("$amount", 11))
+  expect_equal(unguard_na(compiled)$`$gt`, list("$amount", 11))
 })
 
 test_that("unknown bare symbols fail explicitly", {
@@ -92,6 +113,6 @@ test_that("date-time literals compile to Mongo date literals", {
   expr <- mdbplyr:::translate_expr(rlang::quo(timestamp > ts), context = "predicate", fields = "timestamp")
   compiled <- mdbplyr:::compile_mongo_expr(expr)
 
-  expect_equal(compiled$`$gt`[[1]], "$timestamp")
-  expect_equal(compiled$`$gt`[[2]], list(`$date` = "2020-01-01T00:00:10.000Z"))
+  expect_equal(unguard_na(compiled)$`$gt`[[1]], "$timestamp")
+  expect_equal(unguard_na(compiled)$`$gt`[[2]], list(`$date` = "2020-01-01T00:00:10.000Z"))
 })

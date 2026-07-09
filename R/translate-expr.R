@@ -459,22 +459,88 @@ compile_mongo_args <- function(args) {
   unname(lapply(args, compile_mongo_expr))
 }
 
+# R comparisons follow NA semantics: a comparison with a missing operand is NA,
+# which filter() drops and mutate() collects as NA. MongoDB $expr comparisons
+# instead use the BSON sort order, where missing/null sorts below every number,
+# so e.g. {"$lt": ["$absent", 100]} is *true*. To reproduce R's semantics,
+# comparisons compile to a $cond that yields null when any operand that could
+# be missing actually is; $match treats that null as no-match, exactly as
+# dplyr's filter() drops NA. `!` and if_else() get the same treatment because
+# R's !NA is NA and if_else(NA, a, b) is NA, while MongoDB's $not null is true
+# and $cond routes null conditions to the else branch.
+
+#' @keywords internal
+expr_can_be_missing <- function(expr) {
+  switch(
+    expr$type,
+    literal = is.null(expr$value) || (length(expr$value) == 1L && is.na(expr$value)),
+    is_na = FALSE,
+    boolean = FALSE,
+    not = expr_can_be_missing(expr$arg),
+    comparison = any(vapply(expr$args, expr_can_be_missing, logical(1))),
+    TRUE
+  )
+}
+
+#' @keywords internal
+compile_missing_test <- function(compiled) {
+  list(`$eq` = list(list(`$ifNull` = list(compiled, NULL)), NULL))
+}
+
+#' @keywords internal
+compile_na_guarded <- function(guards, compiled) {
+  if (!length(guards)) {
+    return(compiled)
+  }
+  condition <- if (length(guards) == 1L) guards[[1]] else list(`$or` = guards)
+  list(`$cond` = list(`if` = condition, then = NULL, `else` = compiled))
+}
+
+#' @keywords internal
+compile_comparison_expr <- function(expr) {
+  compiled_args <- compile_mongo_args(expr$args)
+  plain <- stats::setNames(list(compiled_args), paste0("$", expr$fn))
+  guardable <- which(vapply(expr$args, expr_can_be_missing, logical(1)))
+  guards <- lapply(compiled_args[guardable], compile_missing_test)
+  compile_na_guarded(unname(guards), plain)
+}
+
+#' @keywords internal
+compile_not_expr <- function(expr) {
+  inner <- compile_mongo_expr(expr$arg)
+  plain <- list(`$not` = list(inner))
+  if (!expr_can_be_missing(expr$arg)) {
+    return(plain)
+  }
+  compile_na_guarded(list(compile_missing_test(inner)), plain)
+}
+
+#' @keywords internal
+compile_if_else_expr <- function(expr) {
+  condition <- compile_mongo_expr(expr$condition)
+  plain <- list(`$cond` = list(
+    `if` = condition,
+    then = compile_mongo_expr(expr$true),
+    `else` = compile_mongo_expr(expr$false)
+  ))
+  if (!expr_can_be_missing(expr$condition)) {
+    return(plain)
+  }
+  compile_na_guarded(list(compile_missing_test(condition)), plain)
+}
+
 #' @keywords internal
 compile_mongo_expr <- function(expr) {
   switch(
     expr$type,
     field = field_reference(expr$source %||% expr$name),
     literal = as_mongo_literal(expr$value),
-    comparison = stats::setNames(list(compile_mongo_args(expr$args)), paste0("$", expr$fn)),
+    comparison = compile_comparison_expr(expr),
     boolean = stats::setNames(list(compile_mongo_args(expr$args)), paste0("$", expr$fn)),
-    not = list(`$not` = list(compile_mongo_expr(expr$arg))),
+    not = compile_not_expr(expr),
     call = stats::setNames(list(compile_mongo_args(expr$args)), paste0("$", expr$fn)),
     round = list(`$round` = list(compile_mongo_expr(expr$arg), expr$digits)),
-    if_else = list(`$cond` = list(
-      `if` = compile_mongo_expr(expr$condition),
-      then = compile_mongo_expr(expr$true),
-      `else` = compile_mongo_expr(expr$false)
-    )),
+    if_else = compile_if_else_expr(expr),
     case_when = list(`$switch` = list(
       branches = lapply(expr$cases, function(branch) {
         list(

@@ -1,3 +1,12 @@
+# Strip the NA-propagation guard from a compiled comparison, exposing the
+# plain {$op: [...]} inside, for tests that assert the comparison's shape.
+unguard_na <- function(x) {
+  if (is.list(x) && identical(names(x), "$cond") && is.null(x$`$cond`$then)) {
+    return(x$`$cond`$`else`)
+  }
+  x
+}
+
 mock_collection <- function(data, name = "mock_collection") {
   executor <- function(pipeline, ...) {
     run_pipeline(data, pipeline)
@@ -450,7 +459,7 @@ eval_expr <- function(expr, data) {
     `$slice` = eval_slice(args, data),
     `$size` = eval_size(args[[1]], data),
     `$round` = round(eval_expr(args[[1]], data), args[[2]]),
-    `$cond` = ifelse(eval_expr(args$`if`, data), eval_expr(args$then, data), eval_expr(args$`else`, data)),
+    `$cond` = eval_cond(args, data),
     `$ifNull` = eval_if_null(args, data),
     `$switch` = eval_switch(args, data),
     stop("Unsupported expression in test executor: ", op, call. = FALSE)
@@ -465,6 +474,18 @@ compare_expr <- function(lhs, rhs, comparator) {
     return(is.na(rhs))
   }
   comparator(lhs, rhs)
+}
+
+eval_cond <- function(spec, data) {
+  # `then` / `else` may be a literal JSON null (mdbplyr's NA-guarded
+  # comparisons compile to $cond with then = null); like the server, treat a
+  # null branch as the missing value, which the mock represents as NA.
+  test <- eval_expr(spec$`if`, data)
+  yes <- eval_expr(spec$then, data)
+  no <- eval_expr(spec$`else`, data)
+  if (is.null(yes)) yes <- NA
+  if (is.null(no)) no <- NA
+  ifelse(test, yes, no)
 }
 
 eval_if_null <- function(args, data) {

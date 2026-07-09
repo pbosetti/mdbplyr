@@ -139,7 +139,7 @@ test_that("filter inlines local values while preserving dotted field references"
   pipeline <- compile_pipeline(tbl)
 
   expect_equal(
-    pipeline[[1]]$`$match`$`$expr`$`$gt`,
+    unguard_na(pipeline[[1]]$`$match`$`$expr`)$`$gt`,
     list("$message.measurements.Fx", 10)
   )
 })
