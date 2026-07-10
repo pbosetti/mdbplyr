@@ -1,3 +1,28 @@
+# mdbplyr 0.4.1
+
+This is a bug-fix release. All four issues were found by running `mdbplyr`
+against a live MongoDB server rather than only against mocked collections, and
+each is covered by a new regression test.
+
+## Bug fixes
+
+- Fixed `filter()` with multiple predicates (e.g. `filter(cond1, cond2)`)
+  compiling `$and` as a JSON object with numeric-string keys instead of an
+  array, which MongoDB silently treated as a no-op filter.
+- Fixed `is.na()` compiling to a bare `$eq` against `null`, which does not
+  match a genuinely missing field under MongoDB's `$expr` semantics; it now
+  compiles through `$ifNull` first.
+- Fixed comparisons (`<`, `<=`, `>`, `>=`, `!=`), `!`, and `if_else()` matching
+  rows with a missing operand, because BSON sort order places missing/null
+  below every number. Comparisons involving a field now compile with an
+  `NA`-propagation guard so they drop or return `NA` for missing values the
+  same way `dplyr` does.
+- Fixed `unwind_array()` and `flatten_fields()` rejecting a nested array root
+  (e.g. `message.measurements`) that `infer_schema()` only ever registers
+  through its scalar leaves (`message.measurements.Fx` and so on). Both now
+  resolve such paths directly, matching `select()`'s existing support for
+  nested root paths.
+
 # mdbplyr 0.4.0
 
 This release expands the lazy MongoDB translation layer introduced in

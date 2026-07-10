@@ -169,6 +169,34 @@ test_that("unwind_array composes lazily with filter and summarise", {
   expect_equal(result$n, c(1, 1))
 })
 
+test_that("unwind_array and flatten_fields accept a nested array root known only through infer_schema()", {
+  # Mirrors what mongolite actually returns for an array of sub-documents: a
+  # multi-row data frame nested inside the single parent document, so
+  # infer_schema() only ever registers the leaf paths (message.measurements.Fx,
+  # .Fy), never "message.measurements" itself. Both unwind_array() and
+  # flatten_fields() must still accept that unregistered array root directly,
+  # with no select() needed in between.
+  collection <- mock_collection(tibble::tibble(
+    id = 1,
+    message = list(list(
+      timestamp = 1,
+      measurements = tibble::tibble(Fx = c(2, 4), Fy = c(3, 5))
+    ))
+  ))
+
+  tbl <- tbl_mongo(collection) |> infer_schema()
+  expect_false("message.measurements" %in% schema_fields(tbl))
+
+  result <- tbl |>
+    unwind_array(`message.measurements`) |>
+    flatten_fields(`message.measurements`) |>
+    collect()
+
+  expect_equal(result$id, c(1, 1))
+  expect_equal(result$`message.measurements.Fx`, c(2, 4))
+  expect_equal(result$`message.measurements.Fy`, c(3, 5))
+})
+
 test_that("unwind_array can be followed by flatten_fields for array objects", {
   collection <- mock_collection(tibble::tibble(
     id = 1,

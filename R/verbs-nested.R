@@ -25,19 +25,19 @@ flatten_fields.tbl_mongo <- function(.data, ..., names_fn = identity) {
   visible_fields <- schema_fields(.data)
   source_schema <- .data$ir$schema %||% character()
   flattenable <- flattenable_field_map(visible_fields, current_map, source_schema)
+  quos <- rlang::enquos(...)
 
-  if (!length(flattenable$all)) {
+  if (!length(quos) && !length(flattenable$all)) {
     abort_invalid(
       "flatten_fields()",
       "requires known nested dotted paths. Supply schema when creating tbl_mongo() or call infer_schema()."
     )
   }
 
-  quos <- rlang::enquos(...)
   selected <- if (!length(quos)) {
     flattenable$all
   } else {
-    flatten_targets(quos, flattenable)
+    flatten_targets(quos, flattenable, current_map, source_schema)
   }
 
   flattened_names <- names_fn(names(selected))
@@ -105,7 +105,14 @@ unwind_array.tbl_mongo <- function(.data, field, preserve_empty = FALSE) {
   current_map <- projection_mapping(.data)
   known_fields <- schema_fields(.data)
 
-  if (!field_name %in% known_fields) {
+  # A field is known either as an exact leaf, or as a "nested root path" that
+  # is a prefix of known leaves (e.g. `message.measurements` when only
+  # `message.measurements.Fx` etc. were registered by infer_schema()) -- the
+  # same notion select() already documents and supports for dotted paths.
+  is_known <- field_name %in% known_fields ||
+    any(startsWith(known_fields, paste0(field_name, ".")))
+
+  if (!is_known) {
     abort_invalid(
       "unwind_array()",
       paste0(
@@ -127,13 +134,20 @@ unwind_array.tbl_mongo <- function(.data, field, preserve_empty = FALSE) {
 }
 
 #' @keywords internal
-flatten_targets <- function(quos, flattenable) {
+flatten_targets <- function(quos, flattenable, current_map, source_schema) {
   selected <- character()
 
   for (quo in quos) {
     target <- parse_field_name(quo, "flatten_fields()")
     matches <- flattenable$by_target[[target]]
     if (is.null(matches) || !length(matches)) {
+      # Not already a registered visible field (e.g. never select()ed after
+      # infer_schema()) -- still resolve it as a nested root path, the same
+      # fallback unwind_array() uses, so flatten_fields() composes directly
+      # after unwind_array()/infer_schema() with no select() needed in between.
+      matches <- resolve_flattenable(target, current_map, source_schema)
+    }
+    if (!length(matches)) {
       abort_invalid(
         "flatten_fields()",
         paste0(
@@ -149,23 +163,27 @@ flatten_targets <- function(quos, flattenable) {
 }
 
 #' @keywords internal
+resolve_flattenable <- function(visible, current_map, source_schema) {
+  source <- resolve_field_sources(visible, current_map)
+  descendants <- source_schema[startsWith(source_schema, paste0(source, "."))]
+
+  if (length(descendants)) {
+    suffix <- substring(descendants, nchar(source) + 1L)
+    return(stats::setNames(descendants, paste0(visible, suffix)))
+  }
+  if (grepl("\\.", visible) && source %in% source_schema) {
+    return(stats::setNames(source, visible))
+  }
+  character()
+}
+
+#' @keywords internal
 flattenable_field_map <- function(visible_fields, current_map, source_schema) {
   by_target <- list()
   all <- character()
 
   for (visible in visible_fields) {
-    source <- resolve_field_sources(visible, current_map)
-    descendants <- source_schema[startsWith(source_schema, paste0(source, "."))]
-
-    matches <- if (length(descendants)) {
-      suffix <- substring(descendants, nchar(source) + 1L)
-      stats::setNames(descendants, paste0(visible, suffix))
-    } else if (grepl("\\.", visible) && source %in% source_schema) {
-      stats::setNames(source, visible)
-    } else {
-      character()
-    }
-
+    matches <- resolve_flattenable(visible, current_map, source_schema)
     by_target[[visible]] <- matches
     all <- c(all, matches)
   }

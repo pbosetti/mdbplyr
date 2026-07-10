@@ -3,7 +3,7 @@ It provides a subset of dplyr verbs that translate into MongoDB aggregation
 stages, allowing users to compose lazy queries against MongoDB collections using 
 tidy evaluation.
 
-v0.4.0 extends support of dplyr verbs, including joins.
+v0.4.1 is a bugfix release.
 
 ## R CMD check results
 
